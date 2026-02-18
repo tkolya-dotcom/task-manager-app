@@ -1,76 +1,80 @@
-# Task Manager Application - Приложение для управления задачами
+# Планировщик - Task Manager Application
 
-## Быстрый старт
+## Быстрый старт / Quick Start
 
-### Запуск приложения
+### Запуск приложения / Running the Application
 
-```bash
-# Установка зависимостей (если нужно)
+```
+bash
+# Установить зависимости (если нужно) / Install dependencies (if needed)
 cd backend && npm install
 
-# Запуск сервера
+# Запустить сервер / Start the server
 node start.js
-# или
+# или / or
 npm start
 ```
 
-### Использование index.html
+После запуска откройте файл `index.html` в браузере.
 
-После запуска сервера откройте `index.html` в вашем браузере.
+After starting the server, open `index.html` in your browser.
 
-## Тестовые аккаунты
+## Тестовые аккаунты / Test Accounts
 
-- **Менеджер**: Tkolya@gmail.com
-- **Работник**: worker@test.com  
-- **Пароль**: любой
+- **Менеджер / Manager:** Tkolya@gmail.com
+- **Работник / Worker:** worker@test.com
+- **Пароль / Password:** любой / any
 
-## Требования
+## Требования / Requirements
 
-1. **Supabase** - примените схему из `sql/schema.sql`
-2. **Node.js** - версия 18+
-3. **Переменные окружения** - настройте Supabase в `backend/.env`
+1. **Supabase** - База данных должна быть настроена с использованием схемы из `sql/schema.sql`
+2. **Node.js** - Версия 18 или выше
+3. **.env файл** - Должен содержать настройки Supabase в `backend/.env`
 
-## Структура проекта
+## Структура проекта / Project Structure
 
 ```
-.
-├── index.html              # Главный фронтенд (единый файл)
-├── start.js                # Скрипт запуска
-├── package.json            # package.json корня
-├── backend/                # Бэкенд
+├── index.html          # Основной фронтенд (один файл) / Main frontend (single file)
+├── start.js           # Скрипт запуска / Start script
+├── package.json       # Корневой package.json / Root package.json
+├── backend/           # Серверная часть / Backend
 │   ├── src/
-│   │   ├── index.js        # Входная точка сервера
-│   │   └── routes/         # API маршруты
-│   ├── config/             # Конфигурация
-│   └── .env                # Переменные окружения
-├── frontend/               # React фронтенд (альтернатива)
+│   │   ├── index.js   # Точка входа сервера / Server entry point
+│   │   ├── routes/   # API маршруты / API routes
+│   │   └── config/   # Конфигурация / Configuration
+│   └── .env          # Переменные окружения / Environment variables
+├── frontend/         # React фронтенд (альтернативный) / React frontend (alternative)
 └── sql/
-    └── schema.sql          # Схема базы данных
+    └── schema.sql    # Схема базы данных / Database schema
 ```
 
-## Настройка .env
+## Настройка .env / .env Setup
 
-Создайте `backend/.env` или `backend/.env.example`:
+Создайте файл `backend/.env` на основе `backend/.env.example`:
 
-```env
-SUPABASE_URL=your-supabase-url
-SUPABASE_ANON_KEY=your-anon-key  
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-JWT_SECRET=your-jwt-secret
+```
+env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+JWT_SECRET=your_jwt_secret
 PORT=3001
 ```
 
 ## API Endpoints
 
-- `GET /health` - Проверка работоспособности
-- `POST /api/auth/login` - Вход
-- `POST /api/auth/register` - Регистрация
-- `GET /api/projects` - Список проектов
-- `GET /api/tasks` - Список задач
-- `GET /api/installations` - Список монтажей
-- `GET /api/purchase-requests` - Список заявок на закупку
+- `GET /health` - Проверка здоровья сервера / Health check
+- `POST /api/auth/login` - Вход / Login
+- `POST /api/auth/register` - Регистрация / Registration
+- `GET /api/projects` - Список проектов / List projects
+- `GET /api/tasks` - Список задач / List tasks
+- `GET /api/installations` - Список монтажей / List installations
+- `GET /api/purchase-requests` - Список заявок / List purchase requests
 
-## Порт
+## Порт / Port
 
-Сервер по умолчанию работает на порту 3001.
-Фронтенд в `index.html` подключается к `http://localhost:3001/api`
+Сервер запускается на порту 3001 по умолчанию.
+The server runs on port 3001 by default.
+
+Фронтенд (index.html) подключается к `http://localhost:3001/api`
+Frontend connects to `http://localhost:3001/api`

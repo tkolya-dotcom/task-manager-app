@@ -1,22 +1,52 @@
 {
-  "name": "Task Manager",
-  "short_name": "TaskMgr",
-  "description": "Task Management Application",
-  "start_url": "/",
+  "name": "Система управления задачами и проектами",
+  "short_name": "Планировщик",
+  "start_url": "/task-manager-app/",
   "display": "standalone",
-  "background_color": "#2563eb",
-  "theme_color": "#2563eb",
-  "orientation": "portrait",
+  "description": "Система управления задачами, проектами, монтажами и заявками на закупку",
+  "lang": "ru",
+  "dir": "ltr",
+  "theme_color": "#1976d2",
+  "background_color": "#ffffff",
+  "orientation": "any",
   "icons": [
     {
-      "src": "https://via.placeholder.com/192",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "https://www.pwabuilder.com/assets/icons/icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
-      "src": "https://via.placeholder.com/512",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "https://www.pwabuilder.com/assets/icons/icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://www.pwabuilder.com/assets/screenshots/screen1.png",
+      "sizes": "2880x1800",
+      "type": "image/png",
+      "description": "Главная страница системы"
+    }
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Проекты",
+      "url": "/projects",
+      "description": "Список проектов"
+    },
+    {
+      "name": "Задачи",
+      "url": "/tasks",
+      "description": "Список задач"
+    },
+    {
+      "name": "Монтажи",
+      "url": "/installations",
+      "description": "Список монтажей"
     }
   ]
 }
