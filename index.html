@@ -1226,8 +1226,9 @@ async function loadCurrentUserProfile() {
                     html += `
                         <div class="card card-clickable" onclick="showProjectDetail('${project.id}')">
                             <div class="list-item-header">
-                                <div class="list-item-title">${project.name}</div>
+                            <div class="list-item-title">${project.name}</div>
                                 <span class="status status-${project.status}">${project.status === 'active' ? 'Активный' : 'Архив'}</span>
+                                ${isManager ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editProject('${project.id}')">✏️</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();deleteProject('${project.id}')">🗑️</button></div>` : ''}
                             </div>
                             <div class="list-item-subtitle">${project.description || 'Нет описания'}</div>
                         </div>
@@ -2228,6 +2229,91 @@ async function showInstallationDetail(instId) {
                 
                 closeModal();
                 showToast('Проект создан');
+                renderContent();
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.editProject = async function(projectId) {
+            const { data: project } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
+
+            if (!project) return;
+
+            showModal('Редактировать проект', `
+                <div class="form-group">
+                    <label>Название</label>
+                    <input id="editProjectName" type="text" placeholder="Название проекта" value="${project.name}">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="editProjectDesc" placeholder="Описание проекта">${project.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select id="editProjectStatus">
+                        <option value="active" ${project.status === 'active' ? 'selected' : ''}>Активный</option>
+                        <option value="archived" ${project.status === 'archived' ? 'selected' : ''}>Архив</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="updateProject('${project.id}')">Сохранить</button>
+            `);
+        };
+        
+        window.updateProject = async function(projectId) {
+            const name = document.getElementById('editProjectName').value;
+            const description = document.getElementById('editProjectDesc').value;
+            const status = document.getElementById('editProjectStatus').value;
+            
+            if (!name) {
+                showToast('Введите название');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('projects')
+                    .update({
+                        name,
+                        description,
+                        status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', projectId);
+                
+                if (error) throw error;
+                
+                closeModal();
+                showToast('Проект обновлен');
+                renderContent();
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.deleteProject = async function(projectId) {
+            if (!confirm('Вы уверены, что хотите удалить этот проект? Все связанные задачи и монтажи также будут удалены.')) {
+                return;
+            }
+            
+            try {
+                // Delete related tasks and installations first
+                await supabase.from('tasks').delete().eq('project_id', projectId);
+                await supabase.from('installations').delete().eq('project_id', projectId);
+                
+                // Delete the project
+                const { error } = await supabase
+                    .from('projects')
+                    .delete()
+                    .eq('id', projectId);
+                
+                if (error) throw error;
+                
+                showToast('Проект удален');
                 renderContent();
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
