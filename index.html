@@ -2719,6 +2719,54 @@ async function showInstallationDetail(instId) {
         // ============================================================
         // Start the app
         initApp();
+
+        // ============================================================
+        // SERVICE WORKER REGISTRATION
+        // Мгновенное обновление: при каждом коммите страница автоперезагружается
+        // ============================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const reg = await navigator.serviceWorker.register('/service-worker.js', {
+                        updateViaCache: 'none' // никогда не брать SW из кэша браузера
+                    });
+
+                    // Проверяем обновление каждые 60 секунд
+                    setInterval(() => reg.update(), 60 * 1000);
+
+                    // Если есть ожидающий SW — сразу активируем
+                    if (reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+
+                    // Слушаем появление нового SW
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Новый SW готов — активируем и перезагружаемся
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    });
+
+                    // Перезагружаемся при смене активного SW
+                    let refreshing = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (!refreshing) {
+                            refreshing = true;
+                            window.location.reload();
+                        }
+                    });
+
+                } catch (err) {
+                    console.error('SW registration failed:', err);
+                }
+            });
+        }
     </script>
 </body>
 </html>
+
