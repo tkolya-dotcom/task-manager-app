@@ -804,7 +804,16 @@
         const SUPABASE_URL = 'https://jmxjbdnqnzkzxgsfywha.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpteGpiZG5xbnprenhnc2Z5d2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTQ0MzQsImV4cCI6MjA4NjczMDQzNH0.z6y6DGs9Z6kojQYeAdsgKA-m4pxuoeABdY4rAojPEE4';
         
-        // Initialize Supabase client
+        // JWT token helper function
+        function getAuthHeaders() {
+            const token = localStorage.getItem('token');
+            return {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+        }
+        
+        // Initialize Supabase client (kept for potential fallback usage)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // ============================================================
@@ -849,14 +858,27 @@
             }
             
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
                 });
                 
-                if (error) throw error;
+                const data = await response.json();
                 
-                await loadCurrentUserProfile();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка аутентификации');
+                }
+                
+                // Store the JWT token
+                localStorage.setItem('token', data.token);
+                
+                // Set the current user profile from the response
+                currentUser = { id: data.user.id, email: data.user.email };
+                currentUserProfile = data.user;
+                
                 showApp();
             } catch (error) {
                 showAuthError(error.message);
@@ -880,82 +902,75 @@
             }
             
             try {
-                const { data, error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: { name, role }
-                    }
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, name, role })
                 });
                 
-                if (error) throw error;
+                const data = await response.json();
                 
-                // Create user profile in users table
-                if (data.user) {
-                    const { error: profileError } = await supabase
-                        .from('users')
-                        .insert({
-                            auth_user_id: data.user.id,
-                            email: data.user.email,
-                            name: name,
-                            role: role
-                        });
-                    
-                    if (profileError) console.error('Profile creation error:', profileError);
+                if (!response.ok) {
+                    throw new Error(data.error || 'Ошибка регистрации');
                 }
                 
-                showToast('Регистрация успешна! Теперь вы можете войти.');
-                showAuthTab('login');
-                document.getElementById('loginEmail').value = email;
+                // Store the JWT token
+                localStorage.setItem('token', data.token);
+                
+                // Set the current user profile from the response
+                currentUser = { id: data.user.id, email: data.user.email };
+                currentUserProfile = data.user;
+                
+                showToast('Регистрация успешна!');
+                showApp();
             } catch (error) {
                 showAuthError(error.message);
             }
         };
         
         window.logout = async function() {
-            await supabase.auth.signOut();
+            // Clear the JWT token from localStorage
+            localStorage.removeItem('token');
             currentUser = null;
             currentUserProfile = null;
             showLogin();
         };
         
 async function loadCurrentUserProfile() {
-            const { data: { user } } = await supabase.auth.getUser();
-            currentUser = user;
+            const token = localStorage.getItem('token');
             
-            if (user) {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('auth_user_id', user.id)
-                    .single();
-                
-                // If no profile exists, create one based on user metadata
-                if (error && error.code === 'PGRST116') {
-                    // Profile doesn't exist, create it from auth metadata
-                    const { data: newProfile, error: insertError } = await supabase
-                        .from('users')
-                        .insert({
-                            auth_user_id: user.id,
-                            email: user.email,
-                            name: user.user_metadata?.name || user.email.split('@')[0],
-                            role: user.user_metadata?.role || 'worker'
-                        })
-                        .select()
-                        .single();
-                    
-                    if (insertError) {
-                        console.error('Error creating profile:', insertError);
-                        currentUserProfile = null;
-                    } else {
-                        currentUserProfile = newProfile;
+            if (!token) {
+                currentUser = null;
+                currentUserProfile = null;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
                     }
-                } else if (error) {
-                    console.error('Error loading profile:', error);
-                    currentUserProfile = null;
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = { id: data.user.id, email: data.user.email };
+                    currentUserProfile = data.user;
                 } else {
-                    currentUserProfile = data;
+                    console.error('Error loading user profile:', data.error);
+                    currentUser = null;
+                    currentUserProfile = null;
+                    // Clear invalid token
+                    localStorage.removeItem('token');
                 }
+            } catch (error) {
+                console.error('Network error loading user profile:', error);
+                currentUser = null;
+                currentUserProfile = null;
+                localStorage.removeItem('token');
             }
         }
         
@@ -988,11 +1003,16 @@ async function loadCurrentUserProfile() {
         
         // Check auth state on load
         async function initApp() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const token = localStorage.getItem('token');
             
-            if (session) {
+            if (token) {
                 await loadCurrentUserProfile();
-                showApp();
+                // Check if user profile was loaded successfully
+                if (currentUserProfile) {
+                    showApp();
+                } else {
+                    showLogin();
+                }
             } else {
                 showLogin();
             }
