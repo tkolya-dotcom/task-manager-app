@@ -1,69 +1,104 @@
-const CACHE_NAME = 'task-manager-v2';
-const STATIC_ASSETS = [
-    '/',
-    '/index.html',
+// ============================================================
+// service-worker.js — Task Manager PWA
+// Стратегия: Network-First для index.html → мгновенное обновление
+// При каждом коммите пользователи сразу видят обновление
+// ============================================================
+
+// Поменяй версию при каждом обновлении index.html!
+const CACHE_VERSION = 'v3';
+const CACHE_NAME = `task-manager-${CACHE_VERSION}`;
+
+// Файлы для кэширования (только статика, НЕ index.html)
+const STATIC_CACHE = [
     '/manifest.json',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+    '/service-worker.js'
 ];
 
-// Install event - cache static assets
+// -------------------------------------------------------
+// INSTALL: устанавливаем SW + skipWaiting — активируемся без ожидания
+// -------------------------------------------------------
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll([
-                '/',
-                '/index.html',
-                '/manifest.json'
-            ]);
-        }).then(() => self.skipWaiting())
+        caches.open(CACHE_NAME)
+            .then((cache) => cache.addAll(STATIC_CACHE))
+            .then(() => self.skipWaiting()) // активируемся мгновенно
     );
 });
 
-// Activate event - clean up old caches
+// -------------------------------------------------------
+// ACTIVATE: удаляем старые кэши + берём контроль над всеми вкладками
+// -------------------------------------------------------
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames
-                    .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
-            );
-        }).then(() => self.clients.claim())
+        caches.keys()
+            .then((keys) => Promise.all(
+                keys
+                    .filter((key) => key !== CACHE_NAME)
+                    .map((key) => caches.delete(key))
+            ))
+            .then(() => self.clients.claim()) // берём контроль без перезагрузки
     );
 });
 
-// Fetch event - network first, fallback to cache
+// -------------------------------------------------------
+// MESSAGE: получаем команду SKIP_WAITING от страницы
+// -------------------------------------------------------
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
+// -------------------------------------------------------
+// FETCH: стратегия запросов
+// • index.html — NETWORK FIRST (всегда свежий с сети, fallback кэш)
+// • Supabase API — пропускаем (всегда сеть)
+// • Остальное — CACHE FIRST (статика)
+// -------------------------------------------------------
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Skip non-GET requests
+    // Пропускаем не-GET запросы
     if (event.request.method !== 'GET') return;
 
-    // Skip Supabase API requests (always go to network)
+    // Пропускаем Supabase API — всегда сеть
     if (url.hostname.includes('supabase.co')) return;
 
-    // For HTML pages - network first, then cache
-    if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
+    // Пропускаем chrome-extension и др.
+    if (!url.protocol.startsWith('http')) return;
+
+    // ★ index.html — NETWORK FIRST: всегда следим за свежей версией
+    const isHtml = url.pathname === '/' ||
+                   url.pathname.endsWith('.html') ||
+                   url.pathname.endsWith('/index.html') ||
+                   (event.request.headers.get('accept') || '').includes('text/html');
+
+    if (isHtml) {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'no-store' }) // запрещаем браузерный кэш
                 .then((response) => {
-                    const clonedResponse = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+                    // Сохраняем свежую версию в кэш
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/index.html')))
+                .catch(() =>
+                    // Оффлайн: берём из кэша
+                    caches.match(event.request)
+                        .then((cached) => cached || caches.match('/index.html'))
+                )
         );
         return;
     }
 
-    // For other requests - cache first, then network
+    // ★ Статика (manifest.json и др.) — CACHE FIRST
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;
             return fetch(event.request).then((response) => {
-                if (response.status === 200) {
-                    const clonedResponse = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+                if (response && response.status === 200) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
                 }
                 return response;
             });
@@ -71,25 +106,23 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// Push notifications
+// -------------------------------------------------------
+// PUSH уведомления
+// -------------------------------------------------------
 self.addEventListener('push', (event) => {
-    if (event.data) {
-        const data = event.data.json();
-        event.waitUntil(
-            self.registration.showNotification(data.title || 'Планировщик', {
-                body: data.body || '',
-                icon: '/icons/icon-192x192.png',
-                badge: '/icons/icon-72x72.png',
-                data: data
-            })
-        );
-    }
+    if (!event.data) return;
+    const data = event.data.json();
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'Планировщик', {
+            body: data.body || '',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-72x72.png',
+            data
+        })
+    );
 });
 
-// Notification click
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(
-        clients.openWindow('/')
-    );
+    event.waitUntil(clients.openWindow('/'));
 });
