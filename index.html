@@ -746,11 +746,12 @@
                     <label>Email</label>
                     <input type="email" id="registerEmail" placeholder="email@example.com">
                 </div>
-                <div class="form-group">
+                    <div class="form-group">
                     <label>Роль</label>
                     <select id="registerRole">
                         <option value="worker">Исполнитель</option>
                         <option value="manager">Руководитель</option>
+                        <option value="deputy_head">Зам начальника отдела</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -977,7 +978,7 @@ async function loadCurrentUserProfile() {
             document.getElementById('authScreen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             
-            const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : 'Исполнитель';
+            const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : 'Исполнитель');
             document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь';
             document.getElementById('headerUser').textContent = roleLabel;
             
@@ -2650,7 +2651,7 @@ async function showInstallationDetail(instId) {
             const labels = {
                 'new': 'Новая',
                 'planned': 'Запланирована',
-                'in_progress': 'В работе',
+                'in_progress': 'В работе'
                 'waiting_materials': 'Ожидание материалов',
                 'done': 'Выполнена',
                 'postponed': 'Отложена'
