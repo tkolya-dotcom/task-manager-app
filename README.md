@@ -1,23 +1,15 @@
 # Планировщик - Task Manager Application
 
+PWA приложение для управления задачами, проектами и монтажами.
+
 ## Быстрый старт / Quick Start
 
-### Запуск приложения / Running the Application
+Приложение работает как PWA (Progressive Web App) без необходимости запуска сервера.
 
-```
-bash
-# Установить зависимости (если нужно) / Install dependencies (if needed)
-cd backend && npm install
+### Запуск / Running
 
-# Запустить сервер / Start the server
-node start.js
-# или / or
-npm start
-```
-
-После запуска откройте файл `index.html` в браузере.
-
-After starting the server, open `index.html` in your browser.
+1. Откройте [GitHub Pages](https://tkolya-dotcom.github.io/task-manager-app/) в браузере
+2. Или откройте `index.html` локально
 
 ## Тестовые аккаунты / Test Accounts
 
@@ -28,53 +20,30 @@ After starting the server, open `index.html` in your browser.
 ## Требования / Requirements
 
 1. **Supabase** - База данных должна быть настроена с использованием схемы из `sql/schema.sql`
-2. **Node.js** - Версия 18 или выше
-3. **.env файл** - Должен содержать настройки Supabase в `backend/.env`
+2. Supabase URL и Anon Key прописаны в `index.html`
 
 ## Структура проекта / Project Structure
 
 ```
 ├── index.html          # Основной фронтенд (один файл) / Main frontend (single file)
-├── start.js           # Скрипт запуска / Start script
-├── package.json       # Корневой package.json / Root package.json
-├── backend/           # Серверная часть / Backend
-│   ├── src/
-│   │   ├── index.js   # Точка входа сервера / Server entry point
-│   │   ├── routes/   # API маршруты / API routes
-│   │   └── config/   # Конфигурация / Configuration
-│   └── .env          # Переменные окружения / Environment variables
-├── frontend/         # React фронтенд (альтернативный) / React frontend (alternative)
+├── service-worker.js   # Service Worker для PWA
+├── manifest.json       # PWA манифест
 └── sql/
-    └── schema.sql    # Схема базы данных / Database schema
+    └── schema.sql      # Схема базы данных / Database schema
 ```
 
-## Настройка .env / .env Setup
+## Технологии / Tech Stack
 
-Создайте файл `backend/.env` на основе `backend/.env.example`:
+- **Frontend:** Vanilla JS, HTML5, CSS3
+- **Backend:** Supabase (PostgreSQL)
+- **Auth:** Supabase Auth (Magic Link / OTP)
+- **PWA:** Service Worker, Web App Manifest
+- **Деплой:** GitHub Pages
 
-```
-env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_jwt_secret
-PORT=3001
-```
+## API / Supabase Tables
 
-## API Endpoints
-
-- `GET /health` - Проверка здоровья сервера / Health check
-- `POST /api/auth/login` - Вход / Login
-- `POST /api/auth/register` - Регистрация / Registration
-- `GET /api/projects` - Список проектов / List projects
-- `GET /api/tasks` - Список задач / List tasks
-- `GET /api/installations` - Список монтажей / List installations
-- `GET /api/purchase-requests` - Список заявок / List purchase requests
-
-## Порт / Port
-
-Сервер запускается на порту 3001 по умолчанию.
-The server runs on port 3001 by default.
-
-Фронтенд (index.html) подключается к `http://localhost:3001/api`
-Frontend connects to `http://localhost:3001/api`
+- `projects` - Проекты
+- `tasks` - Задачи
+- `installations` - Монтажи
+- `purchase_requests` - Заявки на закупку
+- `profiles` - Профили пользователей
