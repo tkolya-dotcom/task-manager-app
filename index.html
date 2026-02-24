@@ -865,6 +865,10 @@
                 });
                 
                 if (authError) {
+                    // Handle specific error cases
+                    if (authError.message && (authError.message.includes('user_already_exists') || authError.message.includes('already been registered'))) {
+                        throw new Error('Пользователь с таким email уже существует. Попробуйте войти или используйте другой email.');
+                    }
                     throw new Error(authError.message);
                 }
                 
@@ -884,8 +888,8 @@
                 }
                 
                 // Set the current user profile
-                currentUser = { id: authData.user.id, email: authData.user.email };
-                currentUserProfile = userData || { 
+currentUser = { id: authData.user.id, email: authData.user.email };
+                currentUserProfile = userData && userData.role ? userData : { 
                     id: authData.user.id, 
                     email: authData.user.email, 
                     name: authData.user.email.split('@')[0],
@@ -935,11 +939,9 @@
                         role
                     }]);
 
-                if (profileError) {
+if (profileError) {
                     console.error('Error creating user profile:', profileError);
-                    // Try to delete the auth user if profile creation failed
-                    await supabase.auth.admin.deleteUser(authData.user.id);
-                    throw new Error('Ошибка создания профиля пользователя');
+                    throw new Error('Ошибка создания профиля пользователя. Пожалуйста, свяжитесь с администратором.');
                 }
 
                 // Store the session
@@ -1003,7 +1005,7 @@ async function loadCurrentUserProfile() {
                 }
 
                 currentUser = { id: user.id, email: user.email };
-                currentUserProfile = userData || {
+currentUserProfile = userData && userData.role ? userData : {
                     id: user.id,
                     email: user.email,
                     name: user.email.split('@')[0],
@@ -1036,7 +1038,7 @@ async function loadCurrentUserProfile() {
             document.getElementById('authScreen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             
-            const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : 'Исполнитель');
+const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : (currentUserProfile?.role === 'worker' ? 'Исполнитель' : 'Исполнитель'));
             document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь';
             document.getElementById('headerUser').textContent = roleLabel;
             
