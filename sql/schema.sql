@@ -10,18 +10,16 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- USERS TABLE (linked to Supabase Auth)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    auth_user_id UUID UNIQUE, -- Link to Supabase auth.users
+    id UUID PRIMARY KEY, -- Matches Supabase auth.users id directly
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('manager', 'worker')),
+    role TEXT NOT NULL CHECK (role IN ('manager', 'worker', 'deputy_head')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_auth_user_id ON users(auth_user_id);
 
 -- =============================================================================
 -- PROJECTS TABLE
@@ -48,6 +46,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     title TEXT NOT NULL,
     description TEXT,
     assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     status TEXT DEFAULT 'new' CHECK (
       status IN ('new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed')
     ),
@@ -60,6 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON tasks(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON tasks(created_by);
 
 -- =============================================================================
 -- INSTALLATIONS TABLE
@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS installations (
     title TEXT NOT NULL,
     description TEXT,
     assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     status TEXT DEFAULT 'new' CHECK (
       status IN ('new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed')
     ),
@@ -83,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_installations_project_id ON installations(project
 CREATE INDEX IF NOT EXISTS idx_installations_assignee_id ON installations(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_installations_status ON installations(status);
 CREATE INDEX IF NOT EXISTS idx_installations_scheduled_at ON installations(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_installations_created_by ON installations(created_by);
 
 -- =============================================================================
 -- PURCHASE REQUESTS TABLE
@@ -168,11 +170,17 @@ ALTER TABLE tasks
 ADD CONSTRAINT fk_tasks_project 
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
-ALTER TABLE tasks 
+ALTER TABLE tasks
 DROP CONSTRAINT IF EXISTS fk_tasks_assignee;
-ALTER TABLE tasks 
-ADD CONSTRAINT fk_tasks_assignee 
+ALTER TABLE tasks
+ADD CONSTRAINT fk_tasks_assignee
   FOREIGN KEY (assignee_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE tasks
+DROP CONSTRAINT IF EXISTS fk_tasks_created_by;
+ALTER TABLE tasks
+ADD CONSTRAINT fk_tasks_created_by
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE installations 
 DROP CONSTRAINT IF EXISTS fk_installations_project;
@@ -349,7 +357,7 @@ DECLARE
     auth_id UUID;
 BEGIN
     auth_id := auth.uid();
-    SELECT role INTO user_role FROM users WHERE auth_user_id = auth_id;
+    SELECT role INTO user_role FROM users WHERE id = auth_id;
     RETURN user_role;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -361,7 +369,7 @@ DECLARE
     auth_id UUID;
 BEGIN
     auth_id := auth.uid();
-    SELECT id INTO user_id FROM users WHERE auth_user_id = auth_id;
+    SELECT id INTO user_id FROM users WHERE id = auth_id;
     RETURN user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

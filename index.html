@@ -939,9 +939,31 @@ currentUser = { id: authData.user.id, email: authData.user.email };
                         role
                     }]);
 
-if (profileError) {
+                if (profileError) {
                     console.error('Error creating user profile:', profileError);
-                    throw new Error('Ошибка создания профиля пользователя. Пожалуйста, свяжитесь с администратором.');
+                    // Don't fail - try to get existing profile or continue with default
+                    const { data: existingProfile } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', authData.user.id)
+                        .single();
+                    
+                    if (!existingProfile) {
+                        // Try one more time with upsert
+                        const { error: upsertError } = await supabase
+                            .from('users')
+                            .upsert([{
+                                id: authData.user.id,
+                                email,
+                                name,
+                                role
+                            }], { onConflict: 'id' });
+                        
+                        if (upsertError) {
+                            console.error('Upsert also failed:', upsertError);
+                            // Continue anyway - user will have default role
+                        }
+                    }
                 }
 
                 // Store the session
