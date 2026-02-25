@@ -1125,7 +1125,8 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 { id: 'projects', label: 'Проекты', icon: '📁' },
                 { id: 'tasks', label: 'Задачи', icon: '📋' },
                 { id: 'installations', label: 'Монтажи', icon: '🔧' },
-                { id: 'calendar', label: 'Календарь', icon: '📅' }
+                { id: 'calendar', label: 'Календарь', icon: '📅' },
+                { id: 'scheme', label: 'Схема', icon: '🗺️' }
             ];
 
             if (isManager) {
@@ -1163,6 +1164,9 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                         break;
                     case 'calendar':
                         await renderCalendar(content);
+                        break;
+                    case 'scheme':
+                        await renderScheme(content);
                         break;
                     default:
                         await renderDashboard(content);
@@ -2292,6 +2296,116 @@ async function showInstallationDetail(instId) {
             
             document.getElementById('content').innerHTML = html;
         };
+        
+        // ============================================================
+        // SCHEME VIEW - Schematic view of all projects and their relationships
+        // ============================================================
+        async function renderScheme(content) {
+            const isManager = isElevatedUser();
+            const projects = isManager ? await getProjects() : await getMyProjects();
+            
+            let html = `<h2 style="margin-bottom: 16px">Схема проектов</h2>`;
+            
+            if (projects.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">🗺️</div><p>Нет проектов</p></div>';
+            } else {
+                for (const project of projects) {
+                    // Get tasks for this project
+                    const { data: tasks } = await supabase
+                        .from('tasks')
+                        .select('*')
+                        .eq('project_id', project.id);
+                    
+                    // Get installations for this project
+                    const { data: installations } = await supabase
+                        .from('installations')
+                        .select('*')
+                        .eq('project_id', project.id);
+                    
+                    // Get all related user IDs
+                    const userIds = new Set();
+                    tasks?.forEach(t => t.assignee_id && userIds.add(t.assignee_id));
+                    installations?.forEach(i => i.assignee_id && userIds.add(i.assignee_id));
+                    
+                    let usersMap = {};
+                    if (userIds.size > 0) {
+                        const { data: users } = await supabase
+                            .from('users')
+                            .select('id, name')
+                            .in('id', Array.from(userIds));
+                        users?.forEach(u => usersMap[u.id] = u);
+                    }
+                    
+                    // Count stats
+                    const tasksCount = tasks?.length || 0;
+                    const installationsCount = installations?.length || 0;
+                    const doneTasks = tasks?.filter(t => t.status === 'done').length || 0;
+                    const doneInstallations = installations?.filter(i => i.status === 'done').length || 0;
+                    
+                    html += `
+                        <div class="card" style="margin-bottom: 16px; border-left: 4px solid var(--primary);">
+                            <div class="list-item-header">
+                                <div class="list-item-title">📁 ${project.name}</div>
+                                <span class="status status-${project.status}">${project.status === 'active' ? 'Активный' : 'Архив'}</span>
+                            </div>
+                            <div class="list-item-subtitle">${project.description || 'Нет описания'}</div>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                                    <div style="flex: 1; min-width: 120px;">
+                                        <div style="font-size: 20px; font-weight: 600; color: var(--primary);">${tasksCount}</div>
+                                        <div style="font-size: 12px; color: var(--gray);">Задач (${doneTasks} выполнено)</div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 120px;">
+                                        <div style="font-size: 20px; font-weight: 600; color: var(--success);">${installationsCount}</div>
+                                        <div style="font-size: 12px; color: var(--gray);">Монтажей (${doneInstallations} выполнено)</div>
+                                    </div>
+                                </div>
+                            </div>
+                    `;
+                    
+                    // Show tasks
+                    if (tasks && tasks.length > 0) {
+                        html += `<div style="margin-top: 12px;"><div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">📋 Задачи:</div>`;
+                        tasks.forEach(task => {
+                            const assignee = usersMap[task.assignee_id];
+                            html += `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--light-gray); border-radius: 6px; margin-bottom: 4px;">
+                                    <div>
+                                        <div style="font-size: 14px;">${task.title}</div>
+                                        <div style="font-size: 12px; color: var(--gray);">${assignee?.name || 'Не назначен'}</div>
+                                    </div>
+                                    <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // Show installations
+                    if (installations && installations.length > 0) {
+                        html += `<div style="margin-top: 12px;"><div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">🔧 Монтажи:</div>`;
+                        installations.forEach(inst => {
+                            const assignee = usersMap[inst.assignee_id];
+                            const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : '';
+                            html += `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--light-gray); border-radius: 6px; margin-bottom: 4px;">
+                                    <div>
+                                        <div style="font-size: 14px;">${inst.title}</div>
+                                        <div style="font-size: 12px; color: var(--gray);">${assignee?.name || 'Не назначен'}${date ? ' - ' + date : ''}</div>
+                                    </div>
+                                    <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    html += `</div>`;
+                }
+            }
+            
+            content.innerHTML = html;
+        }
         
         // ============================================================
         // MODALS
