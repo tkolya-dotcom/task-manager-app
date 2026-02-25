@@ -1129,9 +1129,8 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 { id: 'scheme', label: 'Схема', icon: '🗺️' }
             ];
 
-            if (isManager) {
-                buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '📦' });
-            }
+            // Show "Заявки" tab for all users (workers, deputy_head, manager)
+            buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '📦' });
 
             nav.innerHTML = buttons.map(btn =>
                 `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`
@@ -2593,11 +2592,27 @@ async function showInstallationDetail(instId) {
                 .eq('status', 'active')
                 .order('name');
             
-            const { data: users } = await supabase
-                .from('users')
-                .select('id, name')
-                .eq('role', 'worker')
-                .order('name');
+            // deputy_head and manager can assign to workers and managers
+            const isDeputyHead = currentUserProfile?.role === 'deputy_head';
+            let users;
+            if (isDeputyHead) {
+                // Get all users (workers and managers)
+                const { data: allUsers } = await supabase
+                    .from('users')
+                    .select('id, name, role')
+                    .in('role', ['worker', 'manager'])
+                    .order('role')
+                    .order('name');
+                users = allUsers;
+            } else {
+                // Only workers
+                const { data: workers } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('role', 'worker')
+                    .order('name');
+                users = workers;
+            }
             
             const projectOptions = projects?.map(p => `<option value="${p.id}">${p.name}</option>`).join('') || '';
             const userOptions = users?.map(u => `<option value="${u.id}">${u.name}</option>`).join('') || '';
@@ -2671,11 +2686,27 @@ async function showInstallationDetail(instId) {
                 .eq('status', 'active')
                 .order('name');
             
-            const { data: users } = await supabase
-                .from('users')
-                .select('id, name')
-                .eq('role', 'worker')
-                .order('name');
+            // deputy_head and manager can assign to workers and managers
+            const isDeputyHead = currentUserProfile?.role === 'deputy_head';
+            let users;
+            if (isDeputyHead) {
+                // Get all users (workers and managers)
+                const { data: allUsers } = await supabase
+                    .from('users')
+                    .select('id, name, role')
+                    .in('role', ['worker', 'manager'])
+                    .order('role')
+                    .order('name');
+                users = allUsers;
+            } else {
+                // Only workers
+                const { data: workers } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .eq('role', 'worker')
+                    .order('name');
+                users = workers;
+            }
             
             const projectOptions = projects?.map(p => `<option value="${p.id}">${p.name}</option>`).join('') || '';
             const userOptions = users?.map(u => `<option value="${u.id}">${u.name}</option>`).join('') || '';
