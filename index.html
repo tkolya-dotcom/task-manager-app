@@ -919,51 +919,70 @@ currentUser = { id: authData.user.id, email: authData.user.email };
             }
 
             try {
-                // Create user with Supabase Auth
+                // Create user with Supabase Auth - pass metadata
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email,
-                    password
+                    password,
+                    options: {
+                        data: {
+                            name: name,
+                            role: role
+                        }
+                    }
                 });
 
                 if (authError) {
-                    throw new Error(authError.message);
+                    console.error('Auth signup error:', authError);
+                    
+                    // Handle specific error messages
+                    if (authError.message && authError.message.includes('already been registered')) {
+                        throw new Error('Пользователь с таким email уже существует. Попробуйте войти.');
+                    }
+                    if (authError.message && authError.message.includes('rate limit')) {
+                        throw new Error('Слишком много попыток. Попробуйте позже.');
+                    }
+                    throw new Error(authError.message || 'Ошибка регистрации');
                 }
 
-                // Create user profile in users table
-                const { error: profileError } = await supabase
-                    .from('users')
-                    .insert([{
-                        id: authData.user.id,
-                        email,
-                        name,
-                        role
-                    }]);
-
-                if (profileError) {
-                    console.error('Error creating user profile:', profileError);
-                    // Don't fail - try to get existing profile or continue with default
-                    const { data: existingProfile } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', authData.user.id)
-                        .single();
-                    
-                    if (!existingProfile) {
-                        // Try one more time with upsert
-                        const { error: upsertError } = await supabase
-                            .from('users')
-                            .upsert([{
-                                id: authData.user.id,
-                                email,
-                                name,
-                                role
-                            }], { onConflict: 'id' });
+                // Check if user was created (authData might have user even on some errors)
+                if (!authData || !authData.user) {
+                    // This might be a case where email confirmation is required
+                    // Check if session exists
+                    if (authData && authData.session) {
+                        // Continue with session
+                    } else {
+                        // Try to sign in directly (might already exist)
+                        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
                         
-                        if (upsertError) {
-                            console.error('Upsert also failed:', upsertError);
-                            // Continue anyway - user will have default role
+                        if (signInError) {
+                            throw new Error('Не удалось создать пользователя. Попробуйте позже или свяжитесь с администратором.');
                         }
+                        
+                        // Use sign in data
+                        authData = signInData;
                     }
+                }
+
+                // Try to create user profile in users table
+                try {
+                    const { error: profileError } = await supabase
+                        .from('users')
+                        .insert([{
+                            id: authData.user.id,
+                            email,
+                            name,
+                            role
+                        }]);
+
+                    if (profileError) {
+                        console.log('Profile creation note:', profileError.message);
+                        // Don't fail - profile might already exist
+                    }
+                } catch (profileCatch) {
+                    console.log('Profile creation skipped:', profileCatch.message);
                 }
 
                 // Store the session
@@ -982,7 +1001,8 @@ currentUser = { id: authData.user.id, email: authData.user.email };
                 showToast('Регистрация успешна!');
                 showApp();
             } catch (error) {
-                showAuthError(error.message);
+                console.error('Registration error:', error);
+                showAuthError(error.message || 'Ошибка регистрации. Попробуйте позже.');
             }
         };
         
@@ -2389,9 +2409,67 @@ async function showInstallationDetail(instId) {
             }
             
             try {
-                // Delete related tasks and installations first
-                await supabase.from('tasks').delete().eq('project_id', projectId);
-                await supabase.from('installations').delete().eq('project_id', projectId);
+                // First get all related tasks and installations IDs
+                const { data: tasks } = await supabase
+                    .from('tasks')
+                    .select('id')
+                    .eq('project_id', projectId);
+                
+                const { data: installations } = await supabase
+                    .from('installations')
+                    .select('id')
+                    .eq('project_id', projectId);
+                
+                // Delete purchase request items for tasks
+                if (tasks && tasks.length > 0) {
+                    const taskIds = tasks.map(t => t.id);
+                    const { data: prsForTasks } = await supabase
+                        .from('purchase_requests')
+                        .select('id')
+                        .in('task_id', taskIds);
+                    
+                    if (prsForTasks && prsForTasks.length > 0) {
+                        const prIds = prsForTasks.map(pr => pr.id);
+                        await supabase
+                            .from('purchase_request_items')
+                            .delete()
+                            .in('purchase_request_id', prIds);
+                        await supabase
+                            .from('purchase_requests')
+                            .delete()
+                            .in('id', prIds);
+                    }
+                }
+                
+                // Delete purchase request items for installations
+                if (installations && installations.length > 0) {
+                    const instIds = installations.map(i => i.id);
+                    const { data: prsForInsts } = await supabase
+                        .from('purchase_requests')
+                        .select('id')
+                        .in('installation_id', instIds);
+                    
+                    if (prsForInsts && prsForInsts.length > 0) {
+                        const prIds = prsForInsts.map(pr => pr.id);
+                        await supabase
+                            .from('purchase_request_items')
+                            .delete()
+                            .in('purchase_request_id', prIds);
+                        await supabase
+                            .from('purchase_requests')
+                            .delete()
+                            .in('id', prIds);
+                    }
+                }
+                
+                // Delete tasks and installations
+                if (tasks && tasks.length > 0) {
+                    await supabase.from('tasks').delete().eq('project_id', projectId);
+                }
+                
+                if (installations && installations.length > 0) {
+                    await supabase.from('installations').delete().eq('project_id', projectId);
+                }
                 
                 // Delete the project
                 const { error } = await supabase
@@ -2399,11 +2477,15 @@ async function showInstallationDetail(instId) {
                     .delete()
                     .eq('id', projectId);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Project delete error:', error);
+                    throw new Error(error.message || 'Не удалось удалить проект');
+                }
                 
                 showToast('Проект удален');
-                renderContent();
+                navigate('projects');
             } catch (error) {
+                console.error('Delete project error:', error);
                 showToast('Ошибка: ' + error.message);
             }
         };
