@@ -2405,69 +2405,8 @@ async function showInstallationDetail(instId) {
             }
             
             try {
-                // First get all related tasks and installations IDs
-                const { data: tasks } = await supabase
-                    .from('tasks')
-                    .select('id')
-                    .eq('project_id', projectId);
-                
-                const { data: installations } = await supabase
-                    .from('installations')
-                    .select('id')
-                    .eq('project_id', projectId);
-                
-                // Delete purchase request items for tasks
-                if (tasks && tasks.length > 0) {
-                    const taskIds = tasks.map(t => t.id);
-                    const { data: prsForTasks } = await supabase
-                        .from('purchase_requests')
-                        .select('id')
-                        .in('task_id', taskIds);
-                    
-                    if (prsForTasks && prsForTasks.length > 0) {
-                        const prIds = prsForTasks.map(pr => pr.id);
-                        await supabase
-                            .from('purchase_request_items')
-                            .delete()
-                            .in('purchase_request_id', prIds);
-                        await supabase
-                            .from('purchase_requests')
-                            .delete()
-                            .in('id', prIds);
-                    }
-                }
-                
-                // Delete purchase request items for installations
-                if (installations && installations.length > 0) {
-                    const instIds = installations.map(i => i.id);
-                    const { data: prsForInsts } = await supabase
-                        .from('purchase_requests')
-                        .select('id')
-                        .in('installation_id', instIds);
-                    
-                    if (prsForInsts && prsForInsts.length > 0) {
-                        const prIds = prsForInsts.map(pr => pr.id);
-                        await supabase
-                            .from('purchase_request_items')
-                            .delete()
-                            .in('purchase_request_id', prIds);
-                        await supabase
-                            .from('purchase_requests')
-                            .delete()
-                            .in('id', prIds);
-                    }
-                }
-                
-                // Delete tasks and installations
-                if (tasks && tasks.length > 0) {
-                    await supabase.from('tasks').delete().eq('project_id', projectId);
-                }
-                
-                if (installations && installations.length > 0) {
-                    await supabase.from('installations').delete().eq('project_id', projectId);
-                }
-                
-                // Delete the project
+                // Delete the project - database CASCADE will handle related tasks, installations
+                // and purchase_requests automatically
                 const { error } = await supabase
                     .from('projects')
                     .delete()
@@ -2475,7 +2414,37 @@ async function showInstallationDetail(instId) {
                 
                 if (error) {
                     console.error('Project delete error:', error);
-                    throw new Error(error.message || 'Не удалось удалить проект');
+                    
+                    // If CASCADE failed, try manual deletion
+                    if (error.code === '23503') {
+                        showToast('Сначала удалите связанные заявки');
+                        
+                        // Try to get and show related purchase requests
+                        const { data: prs } = await supabase
+                            .from('purchase_requests')
+                            .select('id')
+                            .in('task_id', 
+                                (await supabase.from('tasks').select('id').eq('project_id', projectId).then(r => r.data?.map(t => t.id) || []))
+                            );
+                        
+                        if (prs && prs.length > 0) {
+                            const prIds = prs.map(pr => pr.id);
+                            // Delete purchase request items first
+                            await supabase.from('purchase_request_items').delete().in('purchase_request_id', prIds);
+                            // Delete purchase requests
+                            await supabase.from('purchase_requests').delete().in('id', prIds);
+                        }
+                        
+                        // Now try to delete project again
+                        const { error: retryError } = await supabase
+                            .from('projects')
+                            .delete()
+                            .eq('id', projectId);
+                        
+                        if (retryError) throw retryError;
+                    } else {
+                        throw error;
+                    }
                 }
                 
                 showToast('Проект удален');
