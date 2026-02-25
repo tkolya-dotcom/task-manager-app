@@ -919,16 +919,12 @@ currentUser = { id: authData.user.id, email: authData.user.email };
             }
 
             try {
-                // Create user with Supabase Auth - pass metadata
+                // Create user with Supabase Auth
+                // IMPORTANT: Do NOT pass role in metadata - it will cause CHECK constraint failure!
+                // Role will be set to 'worker' by the database trigger
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email,
-                    password,
-                    options: {
-                        data: {
-                            name: name,
-                            role: role
-                        }
-                    }
+                    password
                 });
 
                 if (authError) {
