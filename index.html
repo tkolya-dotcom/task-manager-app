@@ -1511,7 +1511,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         }
         
         async function renderTasks(content) {
-            const isManager = currentUserProfile?.role === 'manager';
+            const isManager = isElevatedUser();
             const tasks = isManager ? await getTasks() : await getMyTasks();
             
             let html = `<h2 style="margin-bottom: 16px">Задачи</h2>`;
@@ -1630,8 +1630,8 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 });
             }
             
-            // Add purchase request button for workers
-            if (!isManager && task.assignee_id === currentUserProfile?.id) {
+            // Add purchase request button for all users (worker, deputy_head, manager can create PRs)
+            if (task.assignee_id === currentUserProfile?.id) {
                 html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">Создать заявку на материалы</button>`;
             }
             
@@ -1857,8 +1857,8 @@ async function showInstallationDetail(instId) {
                 });
             }
 
-            // Add purchase request button for workers
-            if (!isManager && inst.assignee_id === currentUserProfile?.id) {
+            // Add purchase request button for all users (worker, deputy_head, manager can create PRs)
+            if (inst.assignee_id === currentUserProfile?.id) {
                 html += `<button class="btn btn-success" onclick="showCreatePRModal('installation', '${inst.id}')">Создать заявку на материалы</button>`;
             }
 
