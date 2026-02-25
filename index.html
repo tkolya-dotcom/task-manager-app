@@ -1125,9 +1125,12 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 { id: 'projects', label: 'Проекты', icon: '📁' },
                 { id: 'tasks', label: 'Задачи', icon: '📋' },
                 { id: 'installations', label: 'Монтажи', icon: '🔧' },
-                { id: 'calendar', label: 'Календарь', icon: '📅' },
-                { id: 'purchaseRequests', label: 'Заявки', icon: '📦' }
+                { id: 'calendar', label: 'Календарь', icon: '📅' }
             ];
+
+            if (isManager) {
+                buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '📦' });
+            }
 
             nav.innerHTML = buttons.map(btn =>
                 `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`
@@ -1884,10 +1887,22 @@ async function showInstallationDetail(instId) {
         // PURCHASE REQUESTS
         // ============================================================
         async function getPurchaseRequests() {
-            const { data, error } = await supabase
+            // For managers/deputy_head - show all requests
+            // For workers - show only their own requests
+            const userId = currentUserProfile?.id;
+            const isManager = isElevatedUser();
+            
+            let query = supabase
                 .from('purchase_requests')
                 .select('*')
                 .order('created_at', { ascending: false });
+            
+            // If not manager, only show own requests
+            if (!isManager) {
+                query = query.eq('created_by', userId);
+            }
+            
+            const { data, error } = await query;
             if (error) throw error;
 
             // Enrich with related data
