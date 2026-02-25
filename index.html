@@ -1656,8 +1656,10 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 });
             }
             
-            // Add purchase request button for all users (worker, deputy_head, manager can create PRs)
-            if (task.assignee_id === currentUserProfile?.id) {
+        // Add purchase request button for workers and elevated users (deputy_head, manager) can create PRs
+            const isManager = currentUserProfile?.role === 'manager';
+            const canCreatePR = isManager || (task.assignee_id === currentUserProfile?.id);
+            if (canCreatePR) {
                 html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">Создать заявку на материалы</button>`;
             }
             
