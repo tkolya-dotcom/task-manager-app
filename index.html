@@ -1119,20 +1119,17 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         function renderNav() {
             const nav = document.getElementById('nav');
             const isManager = isElevatedUser();
-            
+
             const buttons = [
                 { id: 'dashboard', label: 'Главная', icon: '🏠' },
                 { id: 'projects', label: 'Проекты', icon: '📁' },
                 { id: 'tasks', label: 'Задачи', icon: '📋' },
                 { id: 'installations', label: 'Монтажи', icon: '🔧' },
-                { id: 'calendar', label: 'Календарь', icon: '📅' }
+                { id: 'calendar', label: 'Календарь', icon: '📅' },
+                { id: 'purchaseRequests', label: 'Заявки', icon: '📦' }
             ];
-            
-            if (isManager) {
-                buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '📦' });
-            }
-            
-            nav.innerHTML = buttons.map(btn => 
+
+            nav.innerHTML = buttons.map(btn =>
                 `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`
             ).join('');
         }
