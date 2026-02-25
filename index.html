@@ -831,6 +831,11 @@
         // Calendar state
         let calendarDate = new Date();
         
+        // Filter state
+        let taskStatusFilter = 'all';
+        let installationStatusFilter = 'all';
+        let prStatusFilter = 'all';
+        
         // Helper function to check if user has elevated privileges (manager or deputy_head)
         function isElevatedUser() {
             return currentUserProfile?.role === 'manager' || currentUserProfile?.role === 'deputy_head';
@@ -1515,9 +1520,27 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         
         async function renderTasks(content) {
             const isManager = isElevatedUser();
-            const tasks = isManager ? await getTasks() : await getMyTasks();
+            let tasks = isManager ? await getTasks() : await getMyTasks();
+            
+            // Apply filter
+            if (taskStatusFilter !== 'all') {
+                tasks = tasks.filter(t => t.status === taskStatusFilter);
+            }
             
             let html = `<h2 style="margin-bottom: 16px">Задачи</h2>`;
+            
+            // Filter buttons
+            html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`;
+            const filterOptions = [
+                { value: 'all', label: 'Все' },
+                { value: 'new', label: 'Новые' },
+                { value: 'in_progress', label: 'В работе' },
+                { value: 'done', label: 'Выполненные' }
+            ];
+            filterOptions.forEach(opt => {
+                html += `<button class="btn btn-sm ${taskStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setTaskStatusFilter('${opt.value}')">${opt.label}</button>`;
+            });
+            html += `</div>`;
             
             if (isManager) {
                 html += `<button class="btn" onclick="showCreateTaskModal()">+ Новая задача</button><br><br>`;
@@ -1643,20 +1666,25 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         
         window.updateTaskStatus = async function(taskId) {
             const status = document.getElementById('taskStatus').value;
-            
+
             try {
                 const { error } = await supabase
                     .from('tasks')
                     .update({ status, updated_at: new Date().toISOString() })
                     .eq('id', taskId);
-                
+
                 if (error) throw error;
-                
+
                 showToast('Статус обновлен');
                 showTaskDetail(taskId);
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
+        };
+
+        window.setTaskStatusFilter = function(status) {
+            taskStatusFilter = status;
+            renderContent();
         };
         
 // ============================================================
