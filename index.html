@@ -831,6 +831,11 @@
         // Calendar state
         let calendarDate = new Date();
         
+        // Helper function to check if user has elevated privileges (manager or deputy_head)
+        function isElevatedUser() {
+            return currentUserProfile?.role === 'manager' || currentUserProfile?.role === 'deputy_head';
+        }
+        
         // ============================================================
         // AUTH FUNCTIONS
         // ============================================================
@@ -1113,7 +1118,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         
         function renderNav() {
             const nav = document.getElementById('nav');
-            const isManager = currentUserProfile?.role === 'manager';
+            const isManager = isElevatedUser();
             
             const buttons = [
                 { id: 'dashboard', label: 'Главная', icon: '🏠' },
