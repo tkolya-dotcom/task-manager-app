@@ -1177,7 +1177,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         // DASHBOARD
         // ============================================================
         async function renderDashboard(content) {
-            const isManager = currentUserProfile?.role === 'manager';
+            const isManager = isElevatedUser();
             
             let html = '<h2 style="margin-bottom: 16px">Главная</h2>';
             
@@ -1319,7 +1319,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         }
         
         async function renderProjects(content) {
-            const isManager = currentUserProfile?.role === 'manager';
+            const isManager = isElevatedUser();
             const projects = isManager ? await getProjects() : await getMyProjects();
             
             let html = `<h2 style="margin-bottom: 16px">Проекты</h2>`;

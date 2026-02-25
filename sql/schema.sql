@@ -267,6 +267,11 @@ CREATE POLICY "Projects can update"
   FOR UPDATE
   USING (auth.role() = 'authenticated');
 
+CREATE POLICY "Projects can delete"
+  ON projects
+  FOR DELETE
+  USING (auth.role() = 'authenticated');
+
 -- tasks
 CREATE POLICY "Tasks can read all"
   ON tasks
