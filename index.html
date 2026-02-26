@@ -1335,7 +1335,10 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         
         async function renderProjects(content) {
             const isManager = isElevatedUser();
-            const projects = isManager ? await getProjects() : await getMyProjects();
+            let projects = isManager ? await getProjects() : await getMyProjects();
+            
+            // Apply filter by status
+            // For now, all projects are shown - can add status filter if needed
             
             let html = `<h2 style="margin-bottom: 16px">Проекты</h2>`;
             
@@ -1694,6 +1697,11 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
             taskStatusFilter = status;
             renderContent();
         };
+
+        window.setInstallationStatusFilter = function(status) {
+            installationStatusFilter = status;
+            renderContent();
+        };
         
 // ============================================================
 // HELPER: Fetch related data for installations
@@ -1774,9 +1782,28 @@ async function getMyInstallations() {
         
         async function renderInstallations(content) {
             const isManager = currentUserProfile?.role === 'manager';
-            const installations = isManager ? await getInstallations() : await getMyInstallations();
+            let installations = isManager ? await getInstallations() : await getMyInstallations();
+            
+            // Apply filter
+            if (installationStatusFilter !== 'all') {
+                installations = installations.filter(i => i.status === installationStatusFilter);
+            }
             
             let html = `<h2 style="margin-bottom: 16px">Монтажи</h2>`;
+            
+            // Filter buttons
+            html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`;
+            const filterOptions = [
+                { value: 'all', label: 'Все' },
+                { value: 'new', label: 'Новые' },
+                { value: 'planned', label: 'Запланированы' },
+                { value: 'in_progress', label: 'В работе' },
+                { value: 'done', label: 'Выполнены' }
+            ];
+            filterOptions.forEach(opt => {
+                html += `<button class="btn btn-sm ${installationStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setInstallationStatusFilter('${opt.value}')">${opt.label}</button>`;
+            });
+            html += `</div>`;
             
             if (isManager) {
                 html += `<button class="btn" onclick="showCreateInstallationModal()">+ Новый монтаж</button><br><br>`;
