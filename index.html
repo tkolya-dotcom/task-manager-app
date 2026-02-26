@@ -2120,9 +2120,6 @@ async function showInstallationDetail(instId) {
             const canEdit = isOwner && (pr.status === 'rejected' || pr.status === 'draft');
 
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
-            const canApprove = isManager && pr.status === 'pending';
-
-            const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
 
             let html = `
                 <button class="btn btn-outline btn-sm" onclick="navigate('purchaseRequests')" style="margin-bottom: 16px">← Назад</button>
@@ -2222,7 +2219,7 @@ async function showInstallationDetail(instId) {
             } catch (error) { showToast('Ошибка: ' + error.message); }
         };
         
-        window.approvePR
+        window.approvePR = async function(prId) {
             const comment = prompt('Комментарий (необязательно):') || '';
             
             try {
