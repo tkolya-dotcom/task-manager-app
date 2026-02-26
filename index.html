@@ -1514,6 +1514,10 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         }
         
         function renderTaskCard(task, showProject = false) {
+            const isManager = currentUserProfile?.role === 'manager';
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id));
+            
             return `
                 <div class="card card-clickable" onclick="showTaskDetail('${task.id}')">
                     <div class="list-item-header">
@@ -1524,6 +1528,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                         ${showProject && task.projects ? task.projects.name + ' - ' : ''}
                         ${task.users?.name || 'Не назначен'}
                     </div>
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showTaskDetail('${task.id}')">✏️</button></div>` : ''}
                 </div>
             `;
         }
@@ -1767,6 +1772,10 @@ async function getMyInstallations() {
 }
         
         function renderInstallationCard(inst, showProject = false) {
+            const isManager = currentUserProfile?.role === 'manager';
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
+            
             const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован';
             return `
                 <div class="card card-clickable" onclick="showInstallationDetail('${inst.id}')">
@@ -1778,6 +1787,7 @@ async function getMyInstallations() {
                         ${showProject && inst.projects ? inst.projects.name + ' - ' : ''}
                         ${inst.address || ''} - ${date}
                     </div>
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showInstallationDetail('${inst.id}')">✏️</button></div>` : ''}
                 </div>
             `;
         }
