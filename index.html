@@ -1623,7 +1623,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
             }));
             
             const isManager = currentUserProfile?.role === 'manager';
-            const canEdit = isManager || (task.assignee_id === currentUserProfile?.id);
+            const canEdit = isManager || currentUserProfile?.role === 'worker' && task.assignee_id === currentUserProfile?.id;
             
             let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
@@ -1876,7 +1876,7 @@ async function showInstallationDetail(instId) {
             }));
 
             const isManager = currentUserProfile?.role === 'manager';
-            const canEdit = isManager || (inst.assignee_id === currentUserProfile?.id);
+            const canEdit = isManager || currentUserProfile?.role === 'worker' && inst.assignee_id === currentUserProfile?.id;
 
             let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${inst.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
