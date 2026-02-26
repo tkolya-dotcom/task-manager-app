@@ -1623,7 +1623,8 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
             }));
             
             const isManager = currentUserProfile?.role === 'manager';
-            const canEdit = isManager || currentUserProfile?.role === 'worker' && task.assignee_id === currentUserProfile?.id;
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id));
             
             let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
@@ -1876,7 +1877,8 @@ async function showInstallationDetail(instId) {
             }));
 
             const isManager = currentUserProfile?.role === 'manager';
-            const canEdit = isManager || currentUserProfile?.role === 'worker' && inst.assignee_id === currentUserProfile?.id;
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
 
             let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${inst.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
@@ -2018,9 +2020,12 @@ async function showInstallationDetail(instId) {
         
         async function renderPurchaseRequests(content) {
             const prs = await getPurchaseRequests();
-            
+
             let html = `<h2 style="margin-bottom: 16px">Заявки на материалы</h2>`;
-            
+
+            // Add create PR button for all users
+            html += `<button class="btn btn-success" onclick="showCreatePRModal('general')">+ Создать заявку на материалы</button><br><br>`;
+
             if (prs.length === 0) {
                 html += '<div class="empty-state"><div class="empty-state-icon">📦</div><p>Нет заявок</p></div>';
             } else {
