@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -9,175 +9,32 @@
     <title>Планировщик</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --gray: #6b7280;
-            --light-gray: #f3f4f6;
-            --border: #e5e7eb;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 16px;
-            padding-bottom: 80px;
-        }
-        
-        /* Header */
-        .header {
-            background: var(--primary);
-            color: white;
-            padding: 16px;
-            margin: -16px -16px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .header h1 {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
-        .header-user {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-        
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        /* Cards */
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .card-clickable {
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        
-        .card-clickable:active {
-            transform: scale(0.98);
-        }
-        
-        .card h3 {
-            font-size: 16px;
-            margin-bottom: 8px;
-            color: #1f2937;
-        }
-        
-        .card p {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 8px;
-        }
-        
-        /* Buttons */
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-            font-weight: 500;
-        }
-        
-        .btn:active {
-            opacity: 0.9;
-            transform: scale(0.98);
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --gray: #6b7280; --light-gray: #f3f4f6; --border: #e5e7eb; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; font-size: 16px; line-height: 1.5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 16px; padding-bottom: 80px; }
+        .header { background: var(--primary); color: white; padding: 16px; margin: -16px -16px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header-user { font-size: 12px; opacity: 0.9; }
+        .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-clickable { cursor: pointer; transition: transform 0.1s; }
+        .card-clickable:active { transform: scale(0.98); }
+        .card h3 { font-size: 16px; margin-bottom: 8px; color: #1f2937; }
+        .card p { font-size: 14px; color: #6b7280; margin-bottom: 8px; }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 8px; font-weight: 500; }
+        .btn:active { opacity: 0.9; transform: scale(0.98); }
         .btn-success { background: var(--success); }
         .btn-danger { background: var(--danger); }
         .btn-secondary { background: var(--gray); }
         .btn-warning { background: var(--warning); }
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary);
-            color: var(--primary);
-        }
-        
-        .btn-sm {
-            padding: 8px 16px;
-            font-size: 14px;
-            width: auto;
-        }
-        
-        /* Forms */
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 4px;
-            font-size: 14px;
-            color: #374151;
-            font-weight: 500;
-        }
-        
-        .form-group input, 
-        .form-group select, 
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 16px;
-            background: white;
-        }
-        
-        .form-group textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        /* Status badges */
-        .status {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-sm { padding: 8px 16px; font-size: 14px; width: auto; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 4px; font-size: 14px; color: #374151; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: white; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .status { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
         .status-new { background: #dbeafe; color: #1d4ed8; }
         .status-planned { background: #fef3c7; color: #d97706; }
         .status-in_progress { background: #d1fae5; color: #059669; }
@@ -188,24 +45,167 @@
         .status-pending { background: #fef3c7; color: #d97706; }
         .status-approved { background: #d1fae5; color: #059669; }
         .status-rejected { background: #fee2e2; color: #dc2626; }
-        
-        /* Navigation */
-        .nav {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 16px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .nav-btn {
-            background: white;
-            border: 1px solid var(--border);
-            padding: 10px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            white-space: nowrap;
+        .nav { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+        .nav-btn { background: white; border: 1px solid var(--border); padding: 10px 14px; border-radius: 20px; font-size: 13px; white-space: nowrap; cursor: pointer; color: var(--gray); }
+        .nav-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .list-item { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; background: white; border-radius: 8px; margin-bottom: 8px; }
+        .list-item:active { background: var(--light-gray); }
+        .list-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+        .list-item-title { font-weight: 500; color: #1f2937; }
+        .list-item-subtitle { font-size: 13px; color: var(--gray); }
+        .loading { text-align: center; padding: 40px; color: var(--gray); }
+        .loading-spinner { border: 3px solid var(--border); border-top: 3px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+        .auth-screen { display: flex; flex-direction: column; justify-content: center; min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .auth-box { background: white; padding: 32px 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .auth-box h2 { text-align: center; margin-bottom: 8px; color: #1f2937; font-size: 24px; }
+        .auth-box .subtitle { text-align: center; margin-bottom: 24px; color: var(--gray); font-size: 14px; }
+        .auth-tabs { display: flex; margin-bottom: 24px; border-bottom: 2px solid var(--border); }
+        .auth-tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; color: var(--gray); font-weight: 500; }
+        .auth-tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+        .auth-error { background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+        .tab { padding: 12px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; }
+        .tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; padding: 0; z-index: 1000; }
+        .modal-content { background: white; border-radius: 16px 16px 0 0; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: white; }
+        .modal-header h3 { font-size: 18px; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); padding: 4px; }
+        .modal-body { padding: 20px; }
+        .actions { display: flex; gap: 8px; margin-top: 16px; }
+        .actions .btn { flex: 1; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .item-row:last-child { border-bottom: none; }
+        .calendar { background: white; border-radius: 12px; overflow: hidden; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--primary); color: white; }
+        .calendar-nav { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 4px 12px; }
+        .calendar-month { font-size: 16px; font-weight: 600; }
+        .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--light-gray); padding: 8px 0; }
+        .calendar-weekday { text-align: center; font-size: 12px; color: var(--gray); font-weight: 500; }
+        .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px; font-size: 14px; cursor: pointer; border: 1px solid var(--border); }
+        .calendar-day.other-month { color: var(--gray); background: var(--light-gray); }
+        .calendar-day.today { background: #dbeafe; font-weight: 600; }
+        .calendar-day.has-items { background: #fef3c7; }
+        .calendar-day-items { font-size: 9px; color: var(--warning); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .calendar-item { padding: 10px 12px; margin-bottom: 8px; background: var(--light-gray); border-radius: 8px; border-left: 3px solid var(--primary); }
+        .calendar-item.installation { border-left-color: var(--success); }
+        .calendar-item-time { font-size: 12px; color: var(--gray); }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid var(--border); z-index: 100; }
+        .bottom-nav-item { display: flex; flex-direction: column; align-items: center; padding: 8px 16px; color: var(--gray); font-size: 11px; cursor: pointer; background: none; border: none; }
+        .bottom-nav-item.active { color: var(--primary); }
+        .bottom-nav-icon { font-size: 20px; margin-bottom: 2px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: white; padding: 16px; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--gray); }
+        .detail-header { margin-bottom: 16px; }
+        .detail-title { font-size: 22px; font-weight: 600; color: #1f2937; margin-bottom: 8px; }
+        .detail-meta { font-size: 14px; color: var(--gray); }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #1f2937; }
+        .pr-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; background: var(--light-gray); border-radius: 8px; margin-bottom: 8px; }
+        .pr-item-name { font-weight: 500; }
+        .pr-item-qty { color: var(--gray); font-size: 14px; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--gray); }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 2000; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        .choices-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .note-badge { display: inline-flex; align-items: center; background: var(--light-gray); border-radius: 16px; padding: 4px 8px; font-size: 12px; color: var(--gray); border: 1px solid var(--border); }
+        .note-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-right: 6px; flex-shrink: 0; }
+        .note-text { font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-box">
+            <h2>Планировщик</h2>
+            <p class="subtitle">Управление задачами и монтажами</p>
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">Вход</div>
+                <div class="auth-tab" data-tab="register">Регистрация</div>
+            </div>
+            <div id="authError" class="auth-error hidden"></div>
+            <div id="loginForm">
+                <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="email@example.com"></div>
+                <div class="form-group"><label>Пароль</label><input type="password" id="loginPassword" placeholder="Пароль"></div>
+                <button class="btn" onclick="login()">Войти</button>
+            </div>
+            <div id="registerForm" class="hidden">
+                <div class="form-group"><label>Имя</label><input type="text" id="registerName" placeholder="Ваше имя"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="registerEmail" placeholder="email@example.com"></div>
+                <div class="form-group"><label>Роль</label><select id="registerRole"><option value="worker">Исполнитель</option><option value="manager">Руководитель</option><option value="deputy_head">Зам начальника отдела</option></select></div>
+                <div class="form-group"><label>Пароль</label><input type="password" id="registerPassword" placeholder="Пароль (мин. 6 символов)"></div>
+                <button class="btn" onclick="register()">Зарегистрироваться</button>
+            </div>
+        </div>
+    </div>
+    <div id="app" class="container hidden">
+        <div class="header">
+            <div><h1 id="headerTitle">Планировщик</h1><div id="headerUser" class="header-user"></div></div>
+            <button class="logout-btn" onclick="logout()">Выход</button>
+        </div>
+        <div class="nav" id="nav"></div>
+        <div id="content"></div>
+    </div>
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h3 id="modalTitle">Заголовок</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+            <div id="modalBody" class="modal-body"></div>
+        </div>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        const SUPABASE_URL = 'https://jmxjbdnqnzkzxgsfywha.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpteGpiZG5xbnprenhnc2Z5d2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNTQ0MzQsImV4cCI6MjA4NjczMDQzNH0.z6y6DGs9Z6kojQYeAdsgKA-m4pxuoeABdY4rAojPEE4';
+        function getAuthHeaders() { const token = localStorage.getItem('token'); return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }; }
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+        let currentUserProfile = null;
+        let currentView = 'dashboard';
+        let currentProjectId = null;
+        let prType = null;
+        let prRefId = null;
+        let calendarDate = new Date();
+        let taskStatusFilter = 'all';
+        let installationStatusFilter = 'all';
+        let prStatusFilter = 'all';
+        function isElevatedUser() { return currentUserProfile?.role === 'manager' || currentUserProfile?.role === 'deputy_head'; }
+        window.showAuthTab = function(tab) { document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active')); event.target.classList.add('active'); if (tab === 'login') { document.getElementById('loginForm').classList.remove('hidden'); document.getElementById('registerForm').classList.add('hidden'); } else { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); } hideAuthError(); };
+        window.login = async function() { const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; if (!email || !password) { showAuthError('Заполните все поля'); return; } try { const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password }); if (authError) { if (authError.message && (authError.message.includes('user_already_exists') || authError.message.includes('already been registered'))) { throw new Error('Пользователь с таким email уже существует. Попробуйте войти или используйте другой email.'); } throw new Error(authError.message); } localStorage.setItem('token', authData.session.access_token); localStorage.setItem('supabase_session', JSON.stringify(authData.session)); const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', authData.user.id).single(); if (userError && userError.code !== 'PGRST116') { console.error('Error fetching user profile:', userError); } currentUser = { id: authData.user.id, email: authData.user.email }; currentUserProfile = userData && userData.role ? userData : { id: authData.user.id, email: authData.user.email, name: authData.user.email.split('@')[0], role: 'worker' }; showApp(); } catch (error) { showAuthError(error.message); } };
+        window.register = async function() { const name = document.getElementById('registerName').value; const email = document.getElementById('registerEmail').value; const role = document.getElementById('registerRole').value; const password = document.getElementById('registerPassword').value; if (!name || !email || !password) { showAuthError('Заполните все поля'); return; } if (password.length < 6) { showAuthError('Пароль должен быть минимум 6 символов'); return; } try { const { data: authData, error: authError } = await supabase.auth.signUp({ email, password }); if (authError) { console.error('Auth signup error:', authError); if (authError.message && authError.message.includes('already been registered')) { throw new Error('Пользователь с таким email уже существует. Попробуйте войти.'); } if (authError.message && authError.message.includes('rate limit')) { throw new Error('Слишком много попыток. Попробуйте позже.'); } throw new Error(authError.message || 'Ошибка регистрации'); } if (!authData || !authData.user) { if (authData && authData.session) { } else { const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password }); if (signInError) { throw new Error('Не удалось создать пользователя. Попробуйте позже или свяжитесь с администратором.'); } authData = signInData; } } try { const { error: profileError } = await supabase.from('users').insert([{ id: authData.user.id, email, name, role }]); if (profileError) { console.log('Profile creation note:', profileError.message); } } catch (profileCatch) { console.log('Profile creation skipped:', profileCatch.message); } localStorage.setItem('token', authData.session.access_token); localStorage.setItem('supabase_session', JSON.stringify(authData.session)); currentUser = { id: authData.user.id, email: authData.user.email }; currentUserProfile = { id: authData.user.id, email: authData.user.email, name, role }; showToast('Регистрация успешна!'); showApp(); } catch (error) { console.error('Registration error:', error); showAuthError(error.message || 'Ошибка регистрации. Попробуйте позже.'); } };
+        window.logout = async function() { localStorage.removeItem('token'); currentUser = null; currentUserProfile = null; showLogin(); };
+        async function loadCurrentUserProfile() { const token = localStorage.getItem('token'); if (!token) { currentUser = null; currentUserProfile = null; return; } try { const { data: { user }, error: userError } = await supabase.auth.getUser(token); if (userError) { console.error('Error loading user:', userError); currentUser = null; currentUserProfile = null; localStorage.removeItem('token'); return; } const { data: userData, error: profileError } = await supabase.from('users').select('*').eq('id', user.id).single(); if (profileError && profileError.code !== 'PGRST116') { console.error('Error fetching user profile:', profileError); } currentUser = { id: user.id, email: user.email }; currentUserProfile = userData && userData.role ? userData : { id: user.id, email: user.email, name: user.email.split('@')[0], role: 'worker' }; } catch (error) { console.error('Error loading user profile:', error); currentUser = null; currentUserProfile = null; localStorage.removeItem('token'); } }
+        function showAuthError(message) { const el = document.getElementById('authError'); el.textContent = message; el.classList.remove('hidden'); }
+        function hideAuthError() { document.getElementById('authError').classList.add('hidden'); }
+        function showLogin() { document.getElementById('authScreen').classList.remove('hidden'); document.getElementById('app').classList.add('hidden'); }
+        function showApp() { document.getElementById('authScreen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : (currentUserProfile?.role === 'worker' ? 'Исполнитель' : 'Исполнитель')); document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь'; document.getElementById('headerUser').textContent = roleLabel; renderNav(); renderContent(); }
+        async function initApp() { const token = localStorage.getItem('token'); if (token) { await loadCurrentUserProfile(); if (currentUserProfile) { showApp(); } else { showLogin(); } } else { showLogin(); } }
+        window.navigate = function(view) { currentView = view; currentProjectId = null; renderNav(); renderContent(); };
+        function renderNav() { const nav = document.getElementById('nav'); const isManager = isElevatedUser(); const buttons = [ { id: 'dashboard', label: 'Главная', icon: '🏠' }, { id: 'projects', label: 'Проекты', icon: '📁' }, { id: 'tasks', label: 'Задачи', icon: '📋' }, { id: 'installations', label: 'Монтажи', icon: '🔧' }, { id: 'calendar', label: 'Календарь', icon: '📅' }, { id: 'scheme', label: 'Схема', icon: '🗺️' }, { id: 'purchaseRequests', label: 'Заявки', icon: '📦' } ]; nav.innerHTML = buttons.map(btn => `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`).join(''); }
+        async function renderContent() { const content = document.getElementById('content'); content.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Загрузка...</div>'; try { switch(currentView) { case 'dashboard': await renderDashboard(content); break; case 'projects': await renderProjects(content); break; case 'tasks': await renderTasks(content); break; case 'installations': await renderInstallations(content); break; case 'purchaseRequests': await renderPurchaseRequests(content); break; case 'calendar': await renderCalendar(content); break; case 'scheme': await renderScheme(content); break; default: await renderDashboard(content); } } catch (error) { console.error('Render error:', error); content.innerHTML = `<div class="card"><p style="color: red">Ошибка: ${error.message}</p></div>`; } }
+        async function renderDashboard(content) { const isManager = isElevatedUser(); let html = '<h2 style="margin-bottom: 16px">Главная</h2>'; const [projects, tasks, installations, prs] = await Promise.all([ isManager ? getProjects() : getMyProjects(), isManager ? getTasks() : getMyTasks(), isManager ? getInstallations() : getMyInstallations(), getPurchaseRequests() ]); html += `<div class="stats-grid"><div class="stat-card"><div class="stat-value">${projects.length}</div><div class="stat-label">Проектов</div></div><div class="stat-card"><div class="stat-value">${tasks.length}</div><div class="stat-label">Задач</div></div><div class="stat-card"><div class="stat-value">${installations.length}</div><div class="stat-label">Монтажей</div></div><div class="stat-card"><div class="stat-value">${prs.length}</div><div class="stat-label">Заявок</div></div></div>`; if (isManager) { html += `<button class="btn" onclick="navigate('projects')">Все проекты</button><button class="btn btn-outline" onclick="showCreateProjectModal()">+ Новый проект</button>`; } else { const myPendingTasks = tasks.filter(t => t.status === 'in_progress' || t.status === 'new'); const myPendingInstallations = installations.filter(i => i.status === 'planned' || i.status === 'in_progress'); if (myPendingTasks.length > 0) { html += `<h3 class="section-title">Мои задачи</h3>`; myPendingTasks.slice(0, 3).forEach(task => { html += renderTaskCard(task); }); } if (myPendingInstallations.length > 0) { html += `<h3 class="section-title">Мои монтажи</h3>`; myPendingInstallations.slice(0, 3).forEach(inst => { html += renderInstallationCard(inst); }); } } content.innerHTML = html; }
+        async function getProjects() { const { data: projects, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false }); if (error) throw error; const creatorIds = [...new Set(projects?.map(p => p.created_by).filter(Boolean))]; let creators = {}; if (creatorIds.length > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', creatorIds); users?.forEach(u => creators[u.id] = u); } return (projects || []).map(p => ({ ...p, users: creators[p.created_by] || null })); }
+        async function getMyProjects() { const userId = currentUserProfile?.id; const { data: tasks } = await supabase.from('tasks').select('project_id').eq('assignee_id', userId); const { data: installations } = await supabase.from('installations').select('project_id').eq('assignee_id', userId); const { data: createdProjects } = await supabase.from('projects').select('id').eq('created_by', userId); const projectIds = new Set([...(tasks || []).map(t => t.project_id), ...(installations || []).map(i => i.project_id), ...(createdProjects || []).map(p => p.id)]); if (projectIds.size === 0) return []; const { data: projects, error } = await supabase.from('projects').select('*').in('id', Array.from(projectIds)).order('created_at', { ascending: false }); if (error) throw error; const creatorIds = [...new Set(projects?.map(p => p.created_by).filter(Boolean))]; let creators = {}; if (creatorIds.length > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', creatorIds); users?.forEach(u => creators[u.id] = u); } return (projects || []).map(p => ({ ...p, users: creators[p.created_by] || null })); }
+        async function renderProjects(content) { const isManager = isElevatedUser(); let projects = isManager ? await getProjects() : await getMyProjects(); let html = `<h2 style="margin-bottom: 16px">Проекты</h2>`; if (isManager) { html += `<button class="btn" onclick="showCreateProjectModal()">+ Новый проект</button><br><br>`; } if (projects.length === 0) { html += '<div class="empty-state"><div class="empty-state-icon">📁</div><p>Нет проектов</p></div>'; } else { projects.forEach(project => { html += `<div class="card card-clickable" onclick="showProjectDetail('${project.id}')"><div class="list-item-header"><div class="list-item-title">${project.name}</div><span class="status status-${project.status}">${project.status === 'active' ? 'Активный' : 'Архив'}</span>${isManager ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editProject('${project.id}')">✏️</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();deleteProject('${project.id}')">🗑️</button></div>` : ''}</div><div class="list-item-subtitle">${project.description || 'Нет описания'}</div></div>`; }); } content.innerHTML = html; }
+        async function showProjectDetail(projectId) { const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single(); if (!project) return; let creatorName = 'Unknown'; if (project.created_by) { const { data: creator } = await supabase.from('users').select('name').eq('id', project.created_by).single(); creatorName = creator?.name || 'Unknown'; } const { data: tasks } = await supabase.from('tasks').select('*').eq('project_id', projectId).order('created_at', { ascending: false }); const { data: installations } = await supabase.from('installations').select('*').eq('project_id', projectId).order('scheduled_at', { ascending: true }); const allUserIds = new Set(); tasks?.forEach(t => t.assignee_id && allUserIds.add(t.assignee_id)); installations?.forEach(i => i.assignee_id && allUserIds.add(i.assignee_id)); let usersMap = {}; if (allUserIds.size > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', Array.from(allUserIds)); users?.forEach(u => usersMap[u.id] = u); } const tasksWithDetails = (tasks || []).map(t => ({ ...t, users: usersMap[t.assignee_id] || null, projects: { name: project.name } })); const installationsWithDetails = (installations || []).map(i => ({ ...i, users: usersMap[i.assignee_id] || null, projects: { name: project.name } })); let html = `<button class="btn btn-outline btn-sm" onclick="navigate('projects')" style="margin-bottom: 16px">← Назад</button><div class="detail-header"><div class="detail-title">${project.name}</div><div class="detail-meta">${project.description || ''}</div><div class="detail-meta">Создал: ${creatorName}</div></div>`; if (tasksWithDetails.length > 0) { html += `<h3 class="section-title">Задачи (${tasksWithDetails.length})</h3>`; tasksWithDetails.forEach(task => { html += renderTaskCard(task, true); }); } if (installationsWithDetails.length > 0) { html += `<h3 class="section-title">Монтажи (${installationsWithDetails.length})</h3>`; installationsWithDetails.forEach(inst => { html += renderInstallationCard(inst, true); }); } document.getElementById('content').innerHTML = html; }
+        async function enrichTasks(tasks) { if (!tasks || tasks.length === 0) return []; const projectIds = [...new Set(tasks.map(t => t.project_id).filter(Boolean))]; const userIds = [...new Set(tasks.map(t => t.assignee_id).filter(Boolean))]; let projectsMap = {}; if (projectIds.length > 0) { const { data: projects } = await supabase.from('projects').select('id, name').in('id', projectIds); projects?.forEach(p => projectsMap[p.id] = p); } let usersMap = {}; if (userIds.length > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', userIds); users?.forEach(u => usersMap[u.id] = u); } return tasks.map(t => ({ ...t, projects: projectsMap[t.project_id] || null, users: usersMap[t.assignee_id] || null })); }
+        async function getTasks() { const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false }); if (error) throw error; return await enrichTasks(data || []); }
+        async function getMyTasks() { const userId = currentUserProfile?.id; const { data, error } = await supabase.from('tasks').select('*').eq('assignee_id', userId).order('created_at', { ascending: false }); if (error) throw error; return await enrichTasks(data || []); }
+        function renderTaskCard(task, showProject = false) { const isManager = currentUserProfile?.role === 'manager'; const isWorker = currentUserProfile?.role === 'worker'; const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id)); return `<div class="card card-clickable" onclick="showTaskDetail('${task.id}')"><div class="list-item-header"><div class="list-item-title">${task.title}</div><span class="status status-${task.status}">${getStatusLabel(task.status)}</span></div><div class="list-item-subtitle">${showProject && task.projects ? task.projects.name + ' - ' : ''}${task.users?.name || 'Не назначен'}</div>${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showTaskDetail('${task.id}')">✏️</button></div>` : ''}</div>`; }
+        async function renderTasks(content) { const isManager = isElevatedUser(); let tasks = isManager ? await getTasks() : await getMyTasks(); if (taskStatusFilter !== 'all') { tasks = tasks.filter(t => t.status === taskStatusFilter); } let html = `<h2 style="margin-bottom: 16px">Задачи</h2>`; html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`; const filterOptions = [{ value: 'all', label: 'Все' }, { value: 'new', label: 'Новые' }, { value: 'in_progress', label: 'В работе' }, { value: 'done', label: 'Выполненные' }]; filterOptions.forEach(opt => { html += `<button class="btn btn-sm ${taskStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setTaskStatusFilter('${opt.value}')">${opt.label}</button>`; }); html += `</div>`; if (isManager) { html += `<button class="btn" onclick="showCreateTaskModal()">+ Новая задача</button><br><br>`; } if (tasks.length === 0) { html += '<div class="empty-state"><div class="empty-state-icon">📋</div><p>Нет задач</p></div>'; } else { tasks.forEach(task => { html += renderTaskCard(task); }); } content.innerHTML = html; }
+        async function showTaskDetail(taskId) { const { data: task } = await supabase.from('tasks').select('*').eq('id', taskId).single(); if (!task) return; let projectName = '-'; let assigneeName = 'Не назначен'; if (task.project_id) { const { data: project } = await supabase.from('projects').select('name').eq('id', task.project_id).single(); projectName = project?.name || '-'; } if (task.assignee_id) { const { data: user } = await supabase.from('users').select('name').eq('id', task.assignee_id).single(); assigneeName = user?.name || 'Не назначен'; } const { data: prs } = await supabase.from('purchase_requests').select('*').eq('task_id', taskId).order('created_at', { ascending: false }); const prCreatorIds = [...new Set(prs?.map(pr => pr.created_by).filter(Boolean))]; let prCreators = {}; if (prCreatorIds.length > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', prCreatorIds); users?.forEach(u => prCreators[u.id] = u); } const prsWithDetails = (prs || []).map(pr => ({ ...pr, users: prCreators[pr.created_by] || null })); const isManager = currentUserProfile?.role === 'manager'; const isWorker = currentUserProfile?.role === 'worker'; const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id)); let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed'].map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join(''); let html = `<button class="btn btn-outline btn-sm" onclick="navigate('tasks')" style="margin-bottom: 16px">← Назад</button><div class="detail-header"><div class="detail-title">${task.title}</div><div class="detail-meta">${task.description || ''}</div><div class="detail-meta">Проект: ${task.projects?.name || '-'}</div><div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div></div>`; if (canEdit) { html += `<div class="card"><h3 class="section-title">Изменить статус</h3><select id="taskStatus" class="form-group" style="margin-bottom: 12px">${statusOptions}</select><button class="btn" onclick="updateTaskStatus('${task.id}')">Сохранить</button></div>`; } if (prs && prs.length > 0) { html += `<h3 class="section-title">Заявки на материалы</h3>`; prs.forEach(pr => { html += `<div class="card" onclick="showPRDetail('${pr.id}')"><div class="list-item-header"><div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div><span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div class="list-item-subtitle">${pr.users?.name || ''}</div></div>`; }); } const canCreatePR = isElevatedUser() || (String(task.assignee_id) === String(currentUserProfile?.id)); if (canCreatePR) { html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">Создать заявку на материалы</button>`; } document.getElementById('content').innerHTML = html; }
+        window.updateTaskStatus = async function(taskId) { const status = document.getElementById('taskStatus').value; try { const { error } = await supabase.from('tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', taskId); if (error) throw error; showToast('Статус обновлен'); showTaskDetail(taskId); } catch (error) { showToast('Ошибка: ' + error.message); } };
+        window.setTaskStatusFilter = function(status) { taskStatusFilter = status; renderContent(); };
+        window.setInstallationStatusFilter = function(status) { installationStatusFilter = status; renderInstallations(document.getElementById('content')); };
+        async function enrichInstallations(installations) { if (!installations || installations.length === 0) return []; const projectIds = [...new Set(installations.map(i => i.project_id).filter(Boolean))]; const userIds = [...new Set(installations.map(i => i.assignee_id).filter(Boolean))]; let projectsMap = {}; if (projectIds.length > 0) { const { data: projects } = await supabase.from('projects').select('id, name').in('id', projectIds); projects?.forEach(p => projectsMap[p.id] = p); } let usersMap = {}; if (userIds.length > 0) { const { data: users } = await supabase.from('users').select('id, name').in('id', userIds); users?.forEach(u => usersMap[u.id] = u); } return installations.map(i => ({ ...i, projects: projectsMap[i.project_id] || null, users: usersMap[i.assignee_id] || null })); }
+        async function getInstallations() { const { data, error } = await supabase.from('installations').select('*').order('scheduled_at', { ascending: true }); if (error) throw error; return await enrichInstallations(data || []); }
+        async function getMyInstallations() { const userId = currentUserProfile?.id; const { data, error } = await supabase.from('installations').select('*').eq('assignee_id', userId).order('scheduled_at', { ascending: true }); if (error) throw error; return await enrichInstallations(data || []); }
+        function renderInstallationCard(inst, showProject = false) { const isManager = currentUserProfile?.role === 'manager'; const isWorker = currentUserProfile?.role === 'worker'; const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id)); const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован'; return `<div class="card card-clickable" onclick="showInstallationDetail('${inst.id}')"><div class="list-item-header"><div class="list-item-title">${inst.title}</div><span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span></div><div class="list-item-subtitle">${showProject && inst.projects ? inst.projects.name + ' - ' : ''}${inst.address || ''} - ${date}</div>${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showInstallationDetail('${inst.id}')">✏️</button></div>` : ''}</div>`; }
             cursor: pointer;
             color: var(--gray);
         }
@@ -2115,6 +2115,11 @@ async function showInstallationDetail(instId) {
                 .eq('purchase_request_id', prId);
 
             const isManager = currentUserProfile?.role === 'manager';
+            const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
+            const canApprove = isManager && pr.status === 'pending';
+            const canEdit = isOwner && (pr.status === 'rejected' || pr.status === 'draft');
+
+            const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
             const canApprove = isManager && pr.status === 'pending';
 
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
@@ -2154,11 +2159,70 @@ async function showInstallationDetail(instId) {
                     </div>
                 `;
             }
+            
+            if (canEdit) {
+                html += `<button class="btn btn-warning" onclick="editPR('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+            }
 
             document.getElementById('content').innerHTML = html;
         }
         
-        window.approvePR = async function(prId) {
+        window.editPR = async function(prId) {
+            const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
+            const { data: materials } = await supabase.from('materials').select('*').order('category').order('name');
+            const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+            let itemsHtml = '';
+            if (items && items.length > 0) {
+                items.forEach((item, index) => {
+                    const num = index + 1;
+                    itemsHtml += `<div id="editPrItem${num}"><div class="form-group"><label>Позиция ${num} - Материал</label><select id="editItem${num}Material" onchange="handleEditMaterialSelect(${num})"><option value="">-- Выберите материал --</option>${materialOptions}</select></div><div class="form-group"><label>Название (если свое)</label><input id="editItem${num}Name" type="text" value="${item.name || ''}"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Количество</label><input id="editItem${num}Qty" type="number" value="${item.quantity || 1}"></div><div class="form-group" style="flex:1"><label>Единица</label><select id="editItem${num}Unit"><option value="pcs" ${item.unit==='pcs'?'selected':''}>шт</option><option value="m" ${item.unit==='m'?'selected':''}>м</option><option value="m2" ${item.unit==='m2'?'selected':''}>м2</option><option value="m3" ${item.unit==='m3'?'selected':''}>м3</option><option value="l" ${item.unit==='l'?'selected':''}>л</option><option value="kg" ${item.unit==='kg'?'selected':''}>кг</option></select></div></div><div class="form-group"><label>Примечание</label><input id="editItem${num}Note" type="text" value="${item.note || ''}"></div></div>`;
+                });
+            }
+            showModal('Редактировать заявку', `<div id="editPrItems">${itemsHtml}</div><button class="btn btn-outline" onclick="addEditPRItem()" style="margin-bottom:12px">+ Добавить позицию</button><button class="btn" onclick="saveEditedPR('${prId}')">Отправить на рассмотрение</button>`);
+        };
+        
+        window.addEditPRItem = function() {
+            const container = document.getElementById('editPrItems');
+            const count = container.children.length + 1;
+            supabase.from('materials').select('*').order('category').order('name').then(({data: materials}) => {
+                const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+                const div = document.createElement('div');
+                div.innerHTML = `<hr style="margin:16px 0"><div class="form-group"><label>Позиция ${count} - Материал</label><select id="editItem${count}Material" onchange="handleEditMaterialSelect(${count})"><option value="">-- Выберите материал --</option>${materialOptions}</select></div><div class="form-group"><label>Название (если свое)</label><input id="editItem${count}Name" type="text"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Количество</label><input id="editItem${count}Qty" type="number" value="1"></div><div class="form-group" style="flex:1"><label>Единица</label><select id="editItem${count}Unit"><option value="pcs">шт</option><option value="m">м</option><option value="m2">м2</option><option value="m3">м3</option><option value="l">л</option><option value="kg">кг</option></select></div></div><div class="form-group"><label>Примечание</label><input id="editItem${count}Note" type="text"></div>`;
+                container.appendChild(div);
+            });
+        };
+        
+        window.handleEditMaterialSelect = function(itemNum) {
+            const select = document.getElementById('editItem' + itemNum + 'Material');
+            const nameInput = document.getElementById('editItem' + itemNum + 'Name');
+            const unitSelect = document.getElementById('editItem' + itemNum + 'Unit');
+            if (select && select.selectedOptions[0]) {
+                const option = select.selectedOptions[0];
+                if (nameInput && !nameInput.value) nameInput.value = option.getAttribute('data-name');
+                if (unitSelect && option.getAttribute('data-unit')) unitSelect.value = option.getAttribute('data-unit');
+            }
+        };
+        
+        window.saveEditedPR = async function(prId) {
+            const items = [];
+            let i = 1;
+            while (document.getElementById('editItem' + i + 'Name')) {
+                const name = document.getElementById('editItem' + i + 'Name').value;
+                if (name) items.push({ name, quantity: parseFloat(document.getElementById('editItem' + i + 'Qty').value) || 1, unit: document.getElementById('editItem' + i + 'Unit').value, note: document.getElementById('editItem' + i + 'Note').value });
+                i++;
+            }
+            if (items.length === 0) { showToast('Добавьте хотя бы одну позицию'); return; }
+            try {
+                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
+                await supabase.from('purchase_request_items').insert(items.map(item => ({ purchase_request_id: prId, ...item })));
+                await supabase.from('purchase_requests').update({ status: 'pending', comment: null, updated_at: new Date().toISOString() }).eq('id', prId);
+                closeModal();
+                showToast('Заявка отправлена на рассмотрение');
+                showPRDetail(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+        
+        window.approvePR
             const comment = prompt('Комментарий (необязательно):') || '';
             
             try {
