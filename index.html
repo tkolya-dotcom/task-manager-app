@@ -2866,40 +2866,74 @@ async function showInstallationDetail(instId) {
             prType = type;
             prRefId = id;
             
-            showModal('Заявка на материалы', `
-                <div id="prItems">
-                    <div class="form-group">
-                        <label>Позиция 1 - Название</label>
-                        <input id="item1Name" type="text" placeholder="Название материала">
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Количество</label>
-                            <input id="item1Qty" type="number" placeholder="1" value="1">
+            // Fetch materials from Supabase
+            supabase.from('materials').select('*').order('category').order('name')
+                .then(({ data: materials }) => {
+                    const materialOptions = materials?.map(m => 
+                        `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`
+                    ).join('') || '';
+                    
+                    showModal('Заявка на материалы', `
+                        <div id="prItems">
+                            <div class="form-group">
+                                <label>Позиция 1 - Материал</label>
+                                <select id="item1Material" class="form-group" onchange="handleMaterialSelect(1)">
+                                    <option value="">-- Выберите материал --</option>
+                                    ${materialOptions}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Название (если свое)</label>
+                                <input id="item1Name" type="text" placeholder="Название материала">
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Количество</label>
+                                    <input id="item1Qty" type="number" placeholder="1" value="1">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Единица</label>
+                                    <select id="item1Unit">
+                                        <option value="pcs">шт</option>
+                                        <option value="m">м</option>
+                                        <option value="m2">м2</option>
+                                        <option value="m3">м3</option>
+                                        <option value="l">л</option>
+                                        <option value="kg">кг</option>
+                                        <option value="box">кор</option>
+                                        <option value="pack">уп</option>
+                                        <option value="set">набор</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Примечание</label>
+                                <input id="item1Note" type="text" placeholder="Примечание (необязательно)">
+                            </div>
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>Единица</label>
-                            <select id="item1Unit">
-                                <option value="pcs">шт</option>
-                                <option value="m">м</option>
-                                <option value="m2">м2</option>
-                                <option value="m3">м3</option>
-                                <option value="l">л</option>
-                                <option value="kg">кг</option>
-                                <option value="box">кор</option>
-                                <option value="pack">уп</option>
-                                <option value="set">набор</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Примечание</label>
-                        <input id="item1Note" type="text" placeholder="Примечание (необязательно)">
-                    </div>
-                </div>
-                <button class="btn btn-outline" onclick="addPRItem()" style="margin-bottom: 12px">+ Добавить позицию</button>
-                <button class="btn" onclick="createPR()">Создать заявку</button>
-            `);
+                        <button class="btn btn-outline" onclick="addPRItem()" style="margin-bottom: 12px">+ Добавить позицию</button>
+                        <button class="btn" onclick="createPR()">Создать заявку</button>
+                    `);
+                });
+        };
+        
+        window.handleMaterialSelect = function(itemNum) {
+            const select = document.getElementById('item' + itemNum + 'Material');
+            const nameInput = document.getElementById('item' + itemNum + 'Name');
+            const unitSelect = document.getElementById('item' + itemNum + 'Unit');
+            
+            if (select && select.selectedOptions[0]) {
+                const option = select.selectedOptions[0];
+                const name = option.getAttribute('data-name');
+                const unit = option.getAttribute('data-unit');
+                
+                if (nameInput && (!nameInput.value || nameInput.value === name)) {
+                    nameInput.value = name;
+                }
+                if (unitSelect && unit) {
+                    unitSelect.value = unit;
+                }
+            }
         };
         
         window.addPRItem = function() {
