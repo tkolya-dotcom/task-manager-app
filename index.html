@@ -1667,7 +1667,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
             }
             
             // Add purchase request button for workers and elevated users (deputy_head, manager) can create PRs
-            const canCreatePR = isElevatedUser() || (task.assignee_id === currentUserProfile?.id);
+            const canCreatePR = isElevatedUser() || (String(task.assignee_id) === String(currentUserProfile?.id));
             if (canCreatePR) {
                 html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">Создать заявку на материалы</button>`;
             }
@@ -1924,7 +1924,7 @@ async function showInstallationDetail(instId) {
             }
 
             // Add purchase request button for all users (worker, deputy_head, manager can create PRs)
-            const canCreatePR = isElevatedUser() || (inst.assignee_id === currentUserProfile?.id);
+            const canCreatePR = isElevatedUser() || (String(inst.assignee_id) === String(currentUserProfile?.id));
             if (canCreatePR) {
                 html += `<button class="btn btn-success" onclick="showCreatePRModal('installation', '${inst.id}')">Создать заявку на материалы</button>`;
             }
