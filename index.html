@@ -1701,7 +1701,8 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
 
         window.setInstallationStatusFilter = function(status) {
             installationStatusFilter = status;
-            renderContent();
+            // Re-render installations directly instead of full content to preserve state
+            renderInstallations(document.getElementById('content'));
         };
         
 // ============================================================
