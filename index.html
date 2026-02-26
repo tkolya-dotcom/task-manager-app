@@ -1280,7 +1280,7 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
         async function getMyProjects() {
             const userId = currentUserProfile?.id;
 
-            // Get projects where user has tasks or installations
+            // Get projects where user has tasks or installations OR is the creator
             const { data: tasks } = await supabase
                 .from('tasks')
                 .select('project_id')
@@ -1291,9 +1291,16 @@ const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководите
                 .select('project_id')
                 .eq('assignee_id', userId);
 
+            // Also get projects where user is the creator
+            const { data: createdProjects } = await supabase
+                .from('projects')
+                .select('id')
+                .eq('created_by', userId);
+
             const projectIds = new Set([
                 ...(tasks || []).map(t => t.project_id),
-                ...(installations || []).map(i => i.project_id)
+                ...(installations || []).map(i => i.project_id),
+                ...(createdProjects || []).map(p => p.id)
             ]);
 
             if (projectIds.size === 0) return [];
