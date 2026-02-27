@@ -64,25 +64,7 @@
             background-attachment: fixed;
         }
 
-        /* Matrix rain effect - subtle background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0, 255, 136, 0.015) 2px,
-                    rgba(0, 255, 136, 0.015) 4px
-                );
-            pointer-events: none;
-            z-index: 0;
-        }
+
 
         /* ========================================
            TYPOGRAPHY
@@ -1336,9 +1318,12 @@
     <!-- Toast -->
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Matrix Rain Canvas -->
+    <canvas id="matrix-canvas" style="position: fixed; top: 0; left: 0; z-index: -1;"></canvas>
+
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <script type="module">
         // ============================================================
         // CONFIGURATION - Replace with your Supabase credentials
@@ -2036,7 +2021,7 @@
             const isManager = currentUserProfile?.role === 'manager';
             const isWorker = currentUserProfile?.role === 'worker';
             const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id));
-            
+
             return `
                 <div class="card card-clickable" onclick="showTaskDetail('${task.id}')">
                     <div class="list-item-header">
@@ -2047,7 +2032,7 @@
                         ${showProject && task.projects ? task.projects.name + ' - ' : ''}
                         ${task.users?.name || 'Не назначен'}
                     </div>
-                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showTaskDetail('${task.id}')">✎</button></div>` : ''}
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button></div>` : ''}
                 </div>
             `;
         }
@@ -3571,10 +3556,66 @@
         });
 
         // ============================================================
+        // MATRIX RAIN EFFECT
+        // ============================================================
+        function matrixRain() {
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size to window size
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Matrix characters
+            const matrix = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const matrixArray = matrix.split("");
+
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+            const drops = [];
+
+            // Initialize drops
+            for (let x = 0; x < columns; x++) {
+                drops[x] = 1;
+            }
+
+            function draw() {
+                // Black background with slight transparency for trail effect
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Green text
+                ctx.fillStyle = '#00FF88';
+                ctx.font = fontSize + 'px monospace';
+
+                // Loop over drops
+                for (let i = 0; i < drops.length; i++) {
+                    // Random character
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+
+                    // Draw the character
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                    // Reset drop to top randomly
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+
+                    // Move drop down
+                    drops[i]++;
+                }
+            }
+
+            // Animate
+            setInterval(draw, 35);
+        }
+
+        // ============================================================
         // INITIALIZATION
         // ============================================================
         // Start the app
         initApp();
+        matrixRain();
     </script>
 </body>
 </html>
