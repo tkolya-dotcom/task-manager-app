@@ -2863,6 +2863,14 @@
             }, 3000);
         };
 
+        window.togglePickupAddress = function() {
+            const status = document.getElementById('prStatus').value;
+            const pickupAddressGroup = document.getElementById('pickupAddressGroup');
+            if (pickupAddressGroup) {
+                pickupAddressGroup.style.display = status === 'ready_for_pickup' ? 'block' : 'none';
+            }
+        };
+
         // ============================================================
         // MODAL FUNCTIONS
         // ============================================================

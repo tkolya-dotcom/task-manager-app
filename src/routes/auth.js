@@ -37,9 +37,11 @@ router.post('/login', async (req, res) => {
     const tokenPayload = { userId: user.id, email: user.email, role: user.role };
     console.log('JWT token payload:', JSON.stringify(tokenPayload));
     
+    const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+    
     const token = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
@@ -86,9 +88,9 @@ router.post('/register', async (req, res) => {
     }
 
     // Create user (in production, use Supabase Auth to create user)
-    const insertData = { email, name, role };
+    const insertData = { email, display_name: name, role };
     console.log('Inserting data into users table:', JSON.stringify(insertData));
-    
+
     const { data: user, error } = await supabase
       .from('users')
       .insert([insertData])
@@ -106,7 +108,7 @@ router.post('/register', async (req, res) => {
     // Generate JWT token
     const tokenPayload = { userId: user.id, email: user.email, role: user.role };
     console.log('JWT token payload:', JSON.stringify(tokenPayload));
-    
+
     const token = jwt.sign(
       tokenPayload,
       process.env.JWT_SECRET,
@@ -118,7 +120,7 @@ router.post('/register', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: user.display_name,
         role: user.role
       }
     };

@@ -117,12 +117,12 @@ router.post('/', authenticateToken, async (req, res) => {
     // Create purchase request
     const { data: purchaseRequest, error } = await supabase
       .from('purchase_requests')
-      .insert([{ 
-        task_id, 
-        installation_id, 
+      .insert([{
+        task_id,
+        installation_id,
         created_by: req.user.id,
         comment,
-        status: 'pending'
+        status: 'draft'
       }])
       .select()
       .single();
