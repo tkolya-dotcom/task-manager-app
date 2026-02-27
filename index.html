@@ -2278,7 +2278,7 @@
                         ${showProject && inst.projects ? inst.projects.name + ' - ' : ''}
                         ${inst.address || ''} - ${date}
                     </div>
-                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showInstallationDetail('${inst.id}')">✎</button></div>` : ''}
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editInstallation('${inst.id}')">✎</button></div>` : ''}
                 </div>
             `;
         }
@@ -2757,7 +2757,10 @@
             const labels = {
                 'draft': 'Черновик',
                 'pending': 'На рассмотрении',
-                'approved': 'Одобрена',
+                'approved': 'На согласована',
+                'ordered': 'В заказе',
+                'ready_for_pickup': 'Готова к получению',
+                'received': 'Получено',
                 'rejected': 'Отклонена'
             };
             return labels[status] || status;
@@ -2980,12 +2983,12 @@
             const project_id = document.getElementById('taskProject').value;
             const assignee_id = document.getElementById('taskAssignee').value;
             const status = document.getElementById('taskStatus').value;
-            
+
             if (!title) {
                 showToast('Введите название задачи');
                 return;
             }
-            
+
             try {
                 const { error } = await supabase
                     .from('tasks')
@@ -2997,12 +3000,216 @@
                         status,
                         created_by: currentUserProfile?.id
                     }]);
-                
+
                 if (error) throw error;
-                
+
                 closeModal();
                 showToast('Задача создана');
                 renderTasks(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        window.editTask = async function(taskId) {
+            const { data: task } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('id', taskId)
+                .single();
+
+            if (!task) return;
+
+            // Get all projects and users for selection
+            const [{ data: projects }, { data: users }] = await Promise.all([
+                supabase.from('projects').select('id, name'),
+                supabase.from('users').select('id, name')
+            ]);
+
+            const projectOptions = projects?.map(p =>
+                `<option value="${p.id}" ${task.project_id === p.id ? 'selected' : ''}>${p.name}</option>`
+            ).join('') || '';
+
+            const userOptions = users?.map(u =>
+                `<option value="${u.id}" ${task.assignee_id === u.id ? 'selected' : ''}>${u.name}</option>`
+            ).join('') || '';
+
+            showModal('Редактировать задачу', `
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="editTaskTitle" value="${task.title || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="editTaskDescription">${task.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Проект</label>
+                    <select id="editTaskProject">
+                        <option value="">-- Выберите проект --</option>
+                        ${projectOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Исполнитель</label>
+                    <select id="editTaskAssignee">
+                        <option value="">-- Выберите исполнителя --</option>
+                        ${userOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select id="editTaskStatus">
+                        <option value="new" ${task.status === 'new' ? 'selected' : ''}>Новая</option>
+                        <option value="planned" ${task.status === 'planned' ? 'selected' : ''}>Запланирована</option>
+                        <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>В работе</option>
+                        <option value="waiting_materials" ${task.status === 'waiting_materials' ? 'selected' : ''}>Ожидание материалов</option>
+                        <option value="done" ${task.status === 'done' ? 'selected' : ''}>Выполнена</option>
+                        <option value="postponed" ${task.status === 'postponed' ? 'selected' : ''}>Отложена</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="saveEditedTask('${task.id}')">Сохранить</button>
+            `);
+        };
+
+        window.saveEditedTask = async function(taskId) {
+            const title = document.getElementById('editTaskTitle').value;
+            const description = document.getElementById('editTaskDescription').value;
+            const project_id = document.getElementById('editTaskProject').value;
+            const assignee_id = document.getElementById('editTaskAssignee').value;
+            const status = document.getElementById('editTaskStatus').value;
+
+            if (!title) {
+                showToast('Введите название задачи');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .update({
+                        title,
+                        description,
+                        project_id: project_id || null,
+                        assignee_id: assignee_id || null,
+                        status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', taskId);
+
+                if (error) throw error;
+
+                closeModal();
+                showToast('Задача обновлена');
+                renderTasks(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        window.editInstallation = async function(instId) {
+            const { data: inst } = await supabase
+                .from('installations')
+                .select('*')
+                .eq('id', instId)
+                .single();
+
+            if (!inst) return;
+
+            // Get all projects and users for selection
+            const [{ data: projects }, { data: users }] = await Promise.all([
+                supabase.from('projects').select('id, name'),
+                supabase.from('users').select('id, name')
+            ]);
+
+            const projectOptions = projects?.map(p =>
+                `<option value="${p.id}" ${inst.project_id === p.id ? 'selected' : ''}>${p.name}</option>`
+            ).join('') || '';
+
+            const userOptions = users?.map(u =>
+                `<option value="${u.id}" ${inst.assignee_id === u.id ? 'selected' : ''}>${u.name}</option>`
+            ).join('') || '';
+
+            showModal('Редактировать монтаж', `
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="editInstTitle" value="${inst.title || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="editInstDescription">${inst.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Проект</label>
+                    <select id="editInstProject">
+                        <option value="">-- Выберите проект --</option>
+                        ${projectOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Исполнитель</label>
+                    <select id="editInstAssignee">
+                        <option value="">-- Выберите исполнителя --</option>
+                        ${userOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Адрес</label>
+                    <input type="text" id="editInstAddress" value="${inst.address || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Дата и время</label>
+                    <input type="datetime-local" id="editInstScheduledAt" value="${inst.scheduled_at ? new Date(inst.scheduled_at).toISOString().slice(0, 16) : ''}">
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select id="editInstStatus">
+                        <option value="new" ${inst.status === 'new' ? 'selected' : ''}>Новый</option>
+                        <option value="planned" ${inst.status === 'planned' ? 'selected' : ''}>Запланирован</option>
+                        <option value="in_progress" ${inst.status === 'in_progress' ? 'selected' : ''}>В работе</option>
+                        <option value="waiting_materials" ${inst.status === 'waiting_materials' ? 'selected' : ''}>Ожидание материалов</option>
+                        <option value="done" ${inst.status === 'done' ? 'selected' : ''}>Выполнен</option>
+                        <option value="postponed" ${inst.status === 'postponed' ? 'selected' : ''}>Отложен</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="saveEditedInstallation('${inst.id}')">Сохранить</button>
+            `);
+        };
+
+        window.saveEditedInstallation = async function(instId) {
+            const title = document.getElementById('editInstTitle').value;
+            const description = document.getElementById('editInstDescription').value;
+            const project_id = document.getElementById('editInstProject').value;
+            const assignee_id = document.getElementById('editInstAssignee').value;
+            const address = document.getElementById('editInstAddress').value;
+            const scheduled_at = document.getElementById('editInstScheduledAt').value;
+            const status = document.getElementById('editInstStatus').value;
+
+            if (!title) {
+                showToast('Введите название монтажа');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('installations')
+                    .update({
+                        title,
+                        description,
+                        project_id: project_id || null,
+                        assignee_id: assignee_id || null,
+                        address,
+                        scheduled_at: scheduled_at || null,
+                        status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', instId);
+
+                if (error) throw error;
+
+                closeModal();
+                showToast('Монтаж обновлен');
+                renderInstallations(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
