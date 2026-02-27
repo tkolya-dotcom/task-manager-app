@@ -1330,7 +1330,7 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <script type="module">
+    <script>
         // ============================================================
         // CONFIGURATION - Replace with your Supabase credentials
         // ============================================================
@@ -1346,7 +1346,7 @@
             };
         }
         
-        // Initialize Supabase client (kept for potential fallback usage)
+        // Initialize Supabase client
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // ============================================================
