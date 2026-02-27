@@ -2219,20 +2219,538 @@
             installationStatusFilter = status;
             renderInstallations(document.getElementById('content'));
         };
-        
+
         // ============================================================
         // HELPER: Fetch related data for installations
         // ============================================================
         async function enrichInstallations(installations) {
             if (!installations || installations.length === 0) return [];
-            
+
             const projectIds = [...new Set(installations.map(i => i.project_id).filter(Boolean))];
             const userIds = [...new Set(installations.map(i => i.assignee_id).filter(Boolean))];
-            
+
             let projectsMap = {};
             if (projectIds.length > 0) {
                 const { data: projects } = await supabase
                     .from('projects')
                     .select('id, name')
                     .in('id', projectIds);
-                projects?.forEach
+                projects?.forEach(p => projectsMap[p.id] = p);
+            }
+
+            let usersMap = {};
+            if (userIds.length > 0) {
+                const { data: users } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .in('id', userIds);
+                users?.forEach(u => usersMap[u.id] = u);
+            }
+
+            return installations.map(i => ({
+                ...i,
+                projects: projectsMap[i.project_id] || null,
+                users: usersMap[i.assignee_id] || null
+            }));
+        }
+
+        // ============================================================
+        // INSTALLATIONS
+        // ============================================================
+        async function getInstallations() {
+            const { data, error } = await supabase
+                .from('installations')
+                .select('*')
+                .order('scheduled_at', { ascending: true });
+            if (error) throw error;
+            return await enrichInstallations(data || []);
+        }
+
+        async function getMyInstallations() {
+            const userId = currentUserProfile?.id;
+            const { data, error } = await supabase
+                .from('installations')
+                .select('*')
+                .eq('assignee_id', userId)
+                .order('scheduled_at', { ascending: true });
+            if (error) throw error;
+            return await enrichInstallations(data || []);
+        }
+
+        function renderInstallationCard(inst, showProject = false) {
+            const isManager = currentUserProfile?.role === 'manager';
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
+
+            const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован';
+            return `
+                <div class="card card-clickable" onclick="showInstallationDetail('${inst.id}')">
+                    <div class="list-item-header">
+                        <div class="list-item-title">${inst.title}</div>
+                        <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
+                    </div>
+                    <div class="list-item-subtitle">
+                        ${showProject && inst.projects ? inst.projects.name + ' - ' : ''}
+                        ${inst.address || ''} - ${date}
+                    </div>
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showInstallationDetail('${inst.id}')">✎</button></div>` : ''}
+                </div>
+            `;
+        }
+
+        async function renderInstallations(content) {
+            const isManager = currentUserProfile?.role === 'manager';
+            let installations = isManager ? await getInstallations() : await getMyInstallations();
+
+            if (installationStatusFilter !== 'all') {
+                installations = installations.filter(i => i.status === installationStatusFilter);
+            }
+
+            let html = `<h2 style="margin-bottom: 16px">Монтажи</h2>`;
+
+            html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`;
+            const filterOptions = [
+                { value: 'all', label: 'Все' },
+                { value: 'new', label: 'Новые' },
+                { value: 'planned', label: 'Запланированы' },
+                { value: 'in_progress', label: 'В работе' },
+                { value: 'done', label: 'Выполнены' }
+            ];
+            filterOptions.forEach(opt => {
+                html += `<button class="btn btn-sm ${installationStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setInstallationStatusFilter('${opt.value}')">${opt.label}</button>`;
+            });
+            html += `</div>`;
+
+            if (isManager) {
+                html += `<button class="btn" onclick="showCreateInstallationModal()">+ Новый монтаж</button><br><br>`;
+            }
+
+            if (installations.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">⚙</div><p>Нет монтажей</p></div>';
+            } else {
+                installations.forEach(inst => {
+                    html += renderInstallationCard(inst);
+                });
+            }
+
+            content.innerHTML = html;
+        }
+
+        async function showInstallationDetail(instId) {
+            const { data: inst } = await supabase
+                .from('installations')
+                .select('*')
+                .eq('id', instId)
+                .single();
+
+            if (!inst) return;
+
+            let projectName = '-';
+            let assigneeName = 'Не назначен';
+
+            if (inst.project_id) {
+                const { data: project } = await supabase
+                    .from('projects')
+                    .select('name')
+                    .eq('id', inst.project_id)
+                    .single();
+                projectName = project?.name || '-';
+            }
+
+            if (inst.assignee_id) {
+                const { data: user } = await supabase
+                    .from('users')
+                    .select('name')
+                    .eq('id', inst.assignee_id)
+                    .single();
+                assigneeName = user?.name || 'Не назначен';
+            }
+
+            const { data: prs } = await supabase
+                .from('purchase_requests')
+                .select('*')
+                .eq('installation_id', instId)
+                .order('created_at', { ascending: false });
+
+            const prCreatorIds = [...new Set(prs?.map(pr => pr.created_by).filter(Boolean))];
+            let prCreators = {};
+            if (prCreatorIds.length > 0) {
+                const { data: users } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .in('id', prCreatorIds);
+                users?.forEach(u => prCreators[u.id] = u);
+            }
+
+            const prsWithDetails = (prs || []).map(pr => ({
+                ...pr,
+                users: prCreators[pr.created_by] || null
+            }));
+
+            const isManager = currentUserProfile?.role === 'manager';
+            const isWorker = currentUserProfile?.role === 'worker';
+            const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
+
+            let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
+                .map(s => `<option value="${s}" ${inst.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
+
+            const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleString('ru-RU') : 'Не запланирован';
+
+            let html = `
+                <button class="btn btn-outline btn-sm" onclick="navigate('installations')" style="margin-bottom: 16px">← Назад</button>
+                <div class="detail-header">
+                    <div class="detail-title">${inst.title}</div>
+                    <div class="detail-meta">${inst.description || ''}</div>
+                    <div class="detail-meta">Проект: ${projectName}</div>
+                    <div class="detail-meta">Адрес: ${inst.address || '-'}</div>
+                    <div class="detail-meta">Дата: ${date}</div>
+                    <div class="detail-meta">Исполнитель: ${assigneeName}</div>
+                </div>
+            `;
+
+            if (canEdit) {
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Изменить статус</h3>
+                        <select id="instStatus" class="form-group" style="margin-bottom: 12px">
+                            ${statusOptions}
+                        </select>
+                        <button class="btn" onclick="updateInstallationStatus('${inst.id}')">Сохранить</button>
+                    </div>
+                `;
+            }
+
+            if (prsWithDetails && prsWithDetails.length > 0) {
+                html += `<h3 class="section-title">Заявки на материалы</h3>`;
+                prsWithDetails.forEach(pr => {
+                    html += `
+                        <div class="card" onclick="showPRDetail('${pr.id}')">
+                            <div class="list-item-header">
+                                <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
+                                <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
+                            </div>
+                            <div class="list-item-subtitle">${pr.users?.name || ''}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            const canCreatePR = isElevatedUser() || (String(inst.assignee_id) === String(currentUserProfile?.id));
+            if (canCreatePR) {
+                html += `<button class="btn btn-success" onclick="showCreatePRModal('installation', '${inst.id}')">Создать заявку на материалы</button>`;
+            }
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        window.updateInstallationStatus = async function(instId) {
+            const status = document.getElementById('instStatus').value;
+
+            try {
+                const { error } = await supabase
+                    .from('installations')
+                    .update({ status, updated_at: new Date().toISOString() })
+                    .eq('id', instId);
+
+                if (error) throw error;
+
+                showToast('Статус обновлен');
+                showInstallationDetail(instId);
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        // ============================================================
+        // PURCHASE REQUESTS
+        // ============================================================
+        async function getPurchaseRequests() {
+            const userId = currentUserProfile?.id;
+            const isManager = isElevatedUser();
+
+            let query = supabase
+                .from('purchase_requests')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!isManager) {
+                query = query.eq('created_by', userId);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            const prIds = data?.map(pr => pr.id) || [];
+            const taskIds = data?.map(pr => pr.task_id).filter(Boolean) || [];
+            const installationIds = data?.map(pr => pr.installation_id).filter(Boolean) || [];
+            const creatorIds = data?.map(pr => pr.created_by).filter(Boolean) || [];
+
+            let tasksMap = {};
+            let installationsMap = {};
+            let creatorsMap = {};
+
+            if (taskIds.length > 0) {
+                const { data: tasks } = await supabase
+                    .from('tasks')
+                    .select('id, title')
+                    .in('id', taskIds);
+                tasks?.forEach(t => tasksMap[t.id] = t);
+            }
+
+            if (installationIds.length > 0) {
+                const { data: installations } = await supabase
+                    .from('installations')
+                    .select('id, title')
+                    .in('id', installationIds);
+                installations?.forEach(i => installationsMap[i.id] = i);
+            }
+
+            if (creatorIds.length > 0) {
+                const { data: users } = await supabase
+                    .from('users')
+                    .select('id, name')
+                    .in('id', creatorIds);
+                users?.forEach(u => creatorsMap[u.id] = u);
+            }
+
+            return (data || []).map(pr => ({
+                ...pr,
+                users: creatorsMap[pr.created_by] || null,
+                tasks: tasksMap[pr.task_id] || null,
+                installations: installationsMap[pr.installation_id] || null
+            }));
+        }
+
+        async function renderPurchaseRequests(content) {
+            const prs = await getPurchaseRequests();
+
+            let html = `<h2 style="margin-bottom: 16px">Заявки на материалы</h2>`;
+
+            html += `<button class="btn btn-success" onclick="showCreatePRModal('general')">+ Создать заявку на материалы</button><br><br>`;
+
+            if (prs.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">▤</div><p>Нет заявок</p></div>';
+            } else {
+                prs.forEach(pr => {
+                    const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
+                    html += `
+                        <div class="card card-clickable" onclick="showPRDetail('${pr.id}')">
+                            <div class="list-item-header">
+                                <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
+                                <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
+                            </div>
+                            <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            content.innerHTML = html;
+        }
+
+        async function showPRDetail(prId) {
+            const { data: pr } = await supabase
+                .from('purchase_requests')
+                .select('*')
+                .eq('id', prId)
+                .single();
+
+            if (!pr) return;
+
+            let creatorName = 'Unknown';
+            let approverName = null;
+            let taskTitle = null;
+            let installationTitle = null;
+
+            if (pr.created_by) {
+                const { data: creator } = await supabase
+                    .from('users')
+                    .select('name')
+                    .eq('id', pr.created_by)
+                    .single();
+                creatorName = creator?.name || 'Unknown';
+            }
+
+            if (pr.approved_by) {
+                const { data: approver } = await supabase
+                    .from('users')
+                    .select('name')
+                    .eq('id', pr.approved_by)
+                    .single();
+                approverName = approver?.name || null;
+            }
+
+            if (pr.task_id) {
+                const { data: task } = await supabase
+                    .from('tasks')
+                    .select('title')
+                    .eq('id', pr.task_id)
+                    .single();
+                taskTitle = task?.title || null;
+            }
+
+            if (pr.installation_id) {
+                const { data: installation } = await supabase
+                    .from('installations')
+                    .select('title')
+                    .eq('id', pr.installation_id)
+                    .single();
+                installationTitle = installation?.title || null;
+            }
+
+            const { data: items } = await supabase
+                .from('purchase_request_items')
+                .select('*')
+                .eq('purchase_request_id', prId);
+
+            const isManager = currentUserProfile?.role === 'manager';
+            const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
+            const canApprove = isManager && pr.status === 'pending';
+            const canEdit = isOwner && (pr.status === 'rejected' || pr.status === 'draft');
+
+            const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
+
+            let html = `
+                <button class="btn btn-outline btn-sm" onclick="navigate('purchaseRequests')" style="margin-bottom: 16px">← Назад</button>
+                <div class="detail-header">
+                    <div class="detail-title">Заявка #${prId.slice(0, 8)}</div>
+                    <div class="detail-meta">${itemType}</div>
+                    <div class="detail-meta">Статус: <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div>
+                    <div class="detail-meta">Создал: ${creatorName}</div>
+                    ${approverName ? `<div class="detail-meta">Подтвердил: ${approverName}</div>` : ''}
+                    ${pr.comment ? `<div class="detail-meta">Комментарий: ${pr.comment}</div>` : ''}
+                </div>
+            `;
+
+            if (items && items.length > 0) {
+                html += `<h3 class="section-title">Позиции</h3>`;
+                items.forEach(item => {
+                    html += `
+                        <div class="pr-item">
+                            <div>
+                                <div class="pr-item-name">${item.name}</div>
+                                ${item.note ? `<div style="font-size: 12px; color: var(--text-muted)">${item.note}</div>` : ''}
+                            </div>
+                            <div class="pr-item-qty">${item.quantity} ${item.unit}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            if (canApprove) {
+                html += `
+                    <div class="actions">
+                        <button class="btn btn-success" onclick="approvePR('${pr.id}')">Одобрить</button>
+                        <button class="btn btn-danger" onclick="rejectPR('${pr.id}')">Отклонить</button>
+                    </div>
+                `;
+            }
+
+            if (canEdit) {
+                html += `<button class="btn btn-warning" onclick="editPR('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+            }
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        window.editPR = async function(prId) {
+            const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
+            const { data: materials } = await supabase.from('materials').select('*').order('category').order('name');
+            const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+            let itemsHtml = '';
+            if (items && items.length > 0) {
+                items.forEach((item, index) => {
+                    const num = index + 1;
+                    itemsHtml += `<div id="editPrItem${num}"><div class="form-group"><label>Позиция ${num} - Материал</label><select id="editItem${num}Material" onchange="handleEditMaterialSelect(${num})"><option value="">-- Выберите материал --</option>${materialOptions}</select></div><div class="form-group"><label>Название (если свое)</label><input id="editItem${num}Name" type="text" value="${item.name || ''}"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Количество</label><input id="editItem${num}Qty" type="number" value="${item.quantity || 1}"></div><div class="form-group" style="flex:1"><label>Единица</label><select id="editItem${num}Unit"><option value="pcs" ${item.unit==='pcs'?'selected':''}>шт</option><option value="m" ${item.unit==='m'?'selected':''}>м</option><option value="m2" ${item.unit==='m2'?'selected':''}>м2</option><option value="m3" ${item.unit==='m3'?'selected':''}>м3</option><option value="l" ${item.unit==='l'?'selected':''}>л</option><option value="kg" ${item.unit==='kg'?'selected':''}>кг</option></select></div></div><div class="form-group"><label>Примечание</label><input id="editItem${num}Note" type="text" value="${item.note || ''}"></div></div>`;
+                });
+            }
+            showModal('Редактировать заявку', `<div id="editPrItems">${itemsHtml}</div><button class="btn btn-outline" onclick="addEditPRItem()" style="margin-bottom:12px">+ Добавить позицию</button><button class="btn" onclick="saveEditedPR('${prId}')">Отправить на рассмотрение</button>`);
+        };
+
+        window.addEditPRItem = function() {
+            const container = document.getElementById('editPrItems');
+            const count = container.children.length + 1;
+            supabase.from('materials').select('*').order('category').order('name').then(({data: materials}) => {
+                const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+                const div = document.createElement('div');
+                div.innerHTML = `<hr style="margin:16px 0"><div class="form-group"><label>Позиция ${count} - Материал</label><select id="editItem${count}Material" onchange="handleEditMaterialSelect(${count})"><option value="">-- Выберите материал --</option>${materialOptions}</select></div><div class="form-group"><label>Название (если свое)</label><input id="editItem${count}Name" type="text"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Количество</label><input id="editItem${count}Qty" type="number" value="1"></div><div class="form-group" style="flex:1"><label>Единица</label><select id="editItem${count}Unit"><option value="pcs">шт</option><option value="m">м</option><option value="m2">м2</option><option value="m3">м3</option><option value="l">л</option><option value="kg">кг</option></select></div></div><div class="form-group"><label>Примечание</label><input id="editItem${count}Note" type="text"></div>`;
+                container.appendChild(div);
+            });
+        };
+
+        window.handleEditMaterialSelect = function(itemNum) {
+            const select = document.getElementById('editItem' + itemNum + 'Material');
+            const nameInput = document.getElementById('editItem' + itemNum + 'Name');
+            const unitSelect = document.getElementById('editItem' + itemNum + 'Unit');
+            if (select && select.selectedOptions[0]) {
+                const option = select.selectedOptions[0];
+                if (nameInput && !nameInput.value) nameInput.value = option.getAttribute('data-name');
+                if (unitSelect && option.getAttribute('data-unit')) unitSelect.value = option.getAttribute('data-unit');
+            }
+        };
+
+        window.saveEditedPR = async function(prId) {
+            const items = [];
+            let i = 1;
+            while (document.getElementById('editItem' + i + 'Name')) {
+                const name = document.getElementById('editItem' + i + 'Name').value;
+                if (name) items.push({ name, quantity: parseFloat(document.getElementById('editItem' + i + 'Qty').value) || 1, unit: document.getElementById('editItem' + i + 'Unit').value, note: document.getElementById('editItem' + i + 'Note').value });
+                i++;
+            }
+            if (items.length === 0) { showToast('Добавьте хотя бы одну позицию'); return; }
+            try {
+                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
+                await supabase.from('purchase_request_items').insert(items.map(item => ({ purchase_request_id: prId, ...item })));
+                await supabase.from('purchase_requests').update({ status: 'pending', comment: null, updated_at: new Date().toISOString() }).eq('id', prId);
+                closeModal();
+                showToast('Заявка отправлена на рассмотрение');
+                showPRDetail(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.approvePR = async function(prId) {
+            const comment = prompt('Комментарий (необязательно):') || '';
+
+            try {
+                const { error } = await supabase
+                    .from('purchase_requests')
+                    .update({
+                        status: 'approved',
+                        approved_by: currentUserProfile?.id,
+                        comment: comment,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', prId);
+
+                if (error) throw error;
+
+                showToast('Заявка одобрена');
+                showPRDetail(prId);
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        window.rejectPR = async function(prId) {
+            const comment = prompt('Причина отказа:') || '';
+
+            try {
+                const { error } = await supabase
+                    .from('purchase_requests')
+                    .update({
+                        status: 'rejected',
+                        comment: comment,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', prId);
+
+                if (error) throw error;
+
+                showToast('Заявка отклонена');
+                showPRDetail(prId);
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+
