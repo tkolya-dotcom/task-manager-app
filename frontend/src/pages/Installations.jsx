@@ -48,14 +48,26 @@ const Installations = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
+    setSubmitting(true);
+    
+    // Validate required fields
+    if (!formData.project_id || !formData.title) {
+      setError('Пожалуйста, заполните обязательные поля (проект и название)');
+      setSubmitting(false);
+      return;
+    }
+    
     try {
       if (editingInstallation) {
         await installationsApi.update(editingInstallation.id, formData);
         setShowModal(false);
         setEditingInstallation(null);
       } else {
-        await installationsApi.create(formData);
+        console.log('Creating installation with data:', formData);
+        const result = await installationsApi.create(formData);
+        console.log('Creation result:', result);
         setShowModal(false);
       }
       setFormData({
@@ -69,7 +81,10 @@ const Installations = () => {
       });
       loadData();
     } catch (err) {
-      setError(err.message);
+      console.error('Error creating installation:', err);
+      setError(err.message || 'Ошибка при создании монтажа. Проверьте консоль браузера для деталей.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -309,11 +324,11 @@ const Installations = () => {
                 />
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
                   Отмена
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingInstallation ? 'Сохранить' : 'Создать'}
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Сохранение...' : (editingInstallation ? 'Сохранить' : 'Создать')}
                 </button>
               </div>
             </form>
