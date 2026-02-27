@@ -2524,6 +2524,9 @@
             } else {
                 prs.forEach(pr => {
                     const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
+                    const isManager = currentUserProfile?.role === 'manager';
+                    const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
+                    const canDelete = isManager || (isOwner && (pr.status === 'draft' || pr.status === 'pending'));
                     html += `
                         <div class="card card-clickable" onclick="showPRDetail('${pr.id}')">
                             <div class="list-item-header">
@@ -2531,6 +2534,7 @@
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
                             </div>
                             <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}</div>
+                            ${canDelete ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();deletePR('${pr.id}')">✕</button></div>` : ''}
                         </div>
                     `;
                 });
@@ -2658,6 +2662,12 @@
                 html += `<button class="btn btn-warning" onclick="editPR('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
             }
 
+            // Delete button for workers (their own draft/pending requests) or managers
+            const canDelete = isManager || (isOwner && (pr.status === 'draft' || pr.status === 'pending'));
+            if (canDelete) {
+                html += `<button class="btn btn-danger" onclick="deletePR('${pr.id}')">Удалить заявку</button>`;
+            }
+
             document.getElementById('content').innerHTML = html;
         }
 
@@ -2756,6 +2766,30 @@
 
                 showToast('Заявка отклонена');
                 showPRDetail(prId);
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        window.deletePR = async function(prId) {
+            if (!confirm('Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.')) {
+                return;
+            }
+
+            try {
+                // Delete the purchase request items first
+                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
+
+                // Delete the purchase request
+                const { error } = await supabase
+                    .from('purchase_requests')
+                    .delete()
+                    .eq('id', prId);
+
+                if (error) throw error;
+
+                showToast('Заявка удалена');
+                navigate('purchaseRequests');
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
