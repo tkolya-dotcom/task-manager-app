@@ -2147,6 +2147,16 @@
                     <div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div>
                 </div>
             `;
+
+            // Display task comments/notes if any
+            if (task.description) {
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Описание задачи</h3>
+                        <p style="margin: 0; color: var(--text); line-height: 1.5;">${task.description}</p>
+                    </div>
+                `;
+            }
             
             if (canEdit) {
                 html += `
@@ -2398,6 +2408,26 @@
                     <div class="detail-meta">Исполнитель: ${assigneeName}</div>
                 </div>
             `;
+
+            // Display installation comments/notes if any
+            if (inst.description) {
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Описание монтажа</h3>
+                        <p style="margin: 0; color: var(--text); line-height: 1.5;">${inst.description}</p>
+                    </div>
+                `;
+            }
+
+            // Display installation comments/notes if any
+            if (inst.description) {
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Описание монтажа</h3>
+                        <p style="margin: 0; color: var(--text); line-height: 1.5;">${inst.description}</p>
+                    </div>
+                `;
+            }
 
             if (canEdit) {
                 html += `
