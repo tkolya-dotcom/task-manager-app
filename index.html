@@ -2753,4 +2753,830 @@
             }
         };
 
+        // ============================================================
+        // HELPER FUNCTIONS
+        // ============================================================
+        function getStatusLabel(status) {
+            const labels = {
+                'new': 'Новая',
+                'planned': 'Запланирована',
+                'in_progress': 'В работе',
+                'waiting_materials': 'Ожидание материалов',
+                'done': 'Выполнена',
+                'postponed': 'Отложена'
+            };
+            return labels[status] || status;
+        }
+        
+        function getPRStatusLabel(status) {
+            const labels = {
+                'draft': 'Черновик',
+                'pending': 'На рассмотрении',
+                'approved': 'Одобрена',
+                'rejected': 'Отклонена'
+            };
+            return labels[status] || status;
+        }
+        
+        window.showToast = function(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        };
+
+        // ============================================================
+        // MODAL FUNCTIONS
+        // ============================================================
+        window.showModal = function(title, content) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = content;
+            document.getElementById('modal').classList.remove('hidden');
+        };
+        
+        window.closeModal = function() {
+            document.getElementById('modal').classList.add('hidden');
+        };
+        
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // ============================================================
+        // PROJECT MODAL FUNCTIONS
+        // ============================================================
+        window.showCreateProjectModal = function() {
+            showModal('Новый проект', `
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="projectName" placeholder="Название проекта">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="projectDescription" placeholder="Описание проекта"></textarea>
+                </div>
+                <button class="btn" onclick="createProject()">Создать</button>
+            `);
+        };
+        
+        window.createProject = async function() {
+            const name = document.getElementById('projectName').value;
+            const description = document.getElementById('projectDescription').value;
+            
+            if (!name) {
+                showToast('Введите название проекта');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('projects')
+                    .insert([{
+                        name,
+                        description,
+                        status: 'active',
+                        created_by: currentUserProfile?.id
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                closeModal();
+                showToast('Проект создан');
+                renderProjects(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.editProject = async function(projectId) {
+            const { data: project } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
+            
+            if (!project) return;
+            
+            showModal('Редактировать проект', `
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="editProjectName" value="${project.name}">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="editProjectDescription">${project.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Статус</label>
+                    <select id="editProjectStatus">
+                        <option value="active" ${project.status === 'active' ? 'selected' : ''}>Активный</option>
+                        <option value="archived" ${project.status === 'archived' ? 'selected' : ''}>Архив</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="updateProject('${project.id}')">Сохранить</button>
+            `);
+        };
+        
+        window.updateProject = async function(projectId) {
+            const name = document.getElementById('editProjectName').value;
+            const description = document.getElementById('editProjectDescription').value;
+            const status = document.getElementById('editProjectStatus').value;
+            
+            if (!name) {
+                showToast('Введите название проекта');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('projects')
+                    .update({ name, description, status, updated_at: new Date().toISOString() })
+                    .eq('id', projectId);
+                
+                if (error) throw error;
+                
+                closeModal();
+                showToast('Проект обновлен');
+                renderProjects(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.deleteProject = async function(projectId) {
+            if (!confirm('Вы уверены, что хотите удалить проект? Все связанные задачи и монтажи также будут удалены.')) {
+                return;
+            }
+            
+            try {
+                // Delete related tasks and installations first
+                await supabase.from('tasks').delete().eq('project_id', projectId);
+                await supabase.from('installations').delete().eq('project_id', projectId);
+                
+                // Delete the project
+                const { error } = await supabase
+                    .from('projects')
+                    .delete()
+                    .eq('id', projectId);
+                
+                if (error) throw error;
+                
+                showToast('Проект удален');
+                renderProjects(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        // ============================================================
+        // TASK MODAL FUNCTIONS
+        // ============================================================
+        window.showCreateTaskModal = function(projectId = null) {
+            // Get all projects for selection
+            supabase.from('projects').select('id, name').then(({ data: projects }) => {
+                const projectOptions = projects?.map(p => 
+                    `<option value="${p.id}" ${projectId === p.id ? 'selected' : ''}>${p.name}</option>`
+                ).join('') || '';
+                
+                supabase.from('users').select('id, name').then(({ data: users }) => {
+                    const userOptions = users?.map(u => 
+                        `<option value="${u.id}">${u.name}</option>`
+                    ).join('') || '';
+                    
+                    showModal('Новая задача', `
+                        <div class="form-group">
+                            <label>Название</label>
+                            <input type="text" id="taskTitle" placeholder="Название задачи">
+                        </div>
+                        <div class="form-group">
+                            <label>Описание</label>
+                            <textarea id="taskDescription" placeholder="Описание задачи"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Проект</label>
+                            <select id="taskProject">
+                                <option value="">-- Выберите проект --</option>
+                                ${projectOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Исполнитель</label>
+                            <select id="taskAssignee">
+                                <option value="">-- Выберите исполнителя --</option>
+                                ${userOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Статус</label>
+                            <select id="taskStatus">
+                                <option value="new">Новая</option>
+                                <option value="planned">Запланирована</option>
+                                <option value="in_progress">В работе</option>
+                                <option value="waiting_materials">Ожидание материалов</option>
+                                <option value="done">Выполнена</option>
+                                <option value="postponed">Отложена</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="createTask()">Создать</button>
+                    `);
+                });
+            });
+        };
+        
+        window.createTask = async function() {
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const project_id = document.getElementById('taskProject').value;
+            const assignee_id = document.getElementById('taskAssignee').value;
+            const status = document.getElementById('taskStatus').value;
+            
+            if (!title) {
+                showToast('Введите название задачи');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .insert([{
+                        title,
+                        description,
+                        project_id: project_id || null,
+                        assignee_id: assignee_id || null,
+                        status,
+                        created_by: currentUserProfile?.id
+                    }]);
+                
+                if (error) throw error;
+                
+                closeModal();
+                showToast('Задача создана');
+                renderTasks(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        // ============================================================
+        // INSTALLATION MODAL FUNCTIONS
+        // ============================================================
+        window.showCreateInstallationModal = function(projectId = null) {
+            supabase.from('projects').select('id, name').then(({ data: projects }) => {
+                const projectOptions = projects?.map(p => 
+                    `<option value="${p.id}" ${projectId === p.id ? 'selected' : ''}>${p.name}</option>`
+                ).join('') || '';
+                
+                supabase.from('users').select('id, name').then(({ data: users }) => {
+                    const userOptions = users?.map(u => 
+                        `<option value="${u.id}">${u.name}</option>`
+                    ).join('') || '';
+                    
+                    showModal('Новый монтаж', `
+                        <div class="form-group">
+                            <label>Название</label>
+                            <input type="text" id="instTitle" placeholder="Название монтажа">
+                        </div>
+                        <div class="form-group">
+                            <labellabel>
+                            <>Описание</textarea id="instDescription" placeholder="Описание монтажа"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Проект</label>
+                            <select id="instProject">
+                                <option value="">-- Выберите проект --</option>
+                                ${projectOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Исполнитель</label>
+                            <select id="instAssignee">
+                                <option value="">-- Выберите исполнителя --</option>
+                                ${userOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Адрес</label>
+                            <input type="text" id="instAddress" placeholder="Адрес монтажа">
+                        </div>
+                        <div class="form-group">
+                            <label>Дата и время</label>
+                            <input type="datetime-local" id="instScheduledAt">
+                        </div>
+                        <div class="form-group">
+                            <label>Статус</label>
+                            <select id="instStatus">
+                                <option value="new">Новый</option>
+                                <option value="planned">Запланирован</option>
+                                <option value="in_progress">В работе</option>
+                                <option value="waiting_materials">Ожидание материалов</option>
+                                <option value="done">Выполнен</option>
+                                <option value="postponed">Отложен</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="createInstallation()">Создать</button>
+                    `);
+                });
+            });
+        };
+        
+        window.createInstallation = async function() {
+            const title = document.getElementById('instTitle').value;
+            const description = document.getElementById('instDescription').value;
+            const project_id = document.getElementById('instProject').value;
+            const assignee_id = document.getElementById('instAssignee').value;
+            const address = document.getElementById('instAddress').value;
+            const scheduled_at = document.getElementById('instScheduledAt').value;
+            const status = document.getElementById('instStatus').value;
+            
+            if (!title) {
+                showToast('Введите название монтажа');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('installations')
+                    .insert([{
+                        title,
+                        description,
+                        project_id: project_id || null,
+                        assignee_id: assignee_id || null,
+                        address,
+                        scheduled_at: scheduled_at || null,
+                        status,
+                        created_by: currentUserProfile?.id
+                    }]);
+                
+                if (error) throw error;
+                
+                closeModal();
+                showToast('Монтаж создан');
+                renderInstallations(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        // ============================================================
+        // PURCHASE REQUEST MODAL FUNCTIONS
+        // ============================================================
+        window.showCreatePRModal = function(type, refId = null) {
+            prType = type;
+            prRefId = refId;
+            
+            let html = '';
+            
+            if (type === 'task' || type === 'installation') {
+                // Get materials
+                supabase.from('materials').select('*').order('category').order('name').then(({ data: materials }) => {
+                    const materialOptions = materials?.map(m => 
+                        `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`
+                    ).join('') || '';
+                    
+                    showCreatePRForm(materialOptions);
+                });
+            } else {
+                // General PR - just show the form
+                supabase.from('materials').select('*').order('category').order('name').then(({ data: materials }) => {
+                    const materialOptions = materials?.map(m => 
+                        `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`
+                    ).join('') || '';
+                    
+                    showCreatePRForm(materialOptions);
+                });
+            }
+        };
+        
+        function showCreatePRForm(materialOptions) {
+            let html = `
+                <div id="prItems">
+                    <div class="form-group">
+                        <label>Позиция 1 - Материал</label>
+                        <select id="prItem1Material" onchange="handleMaterialSelect(1)">
+                            <option value="">-- Выберите материал --</option>
+                            ${materialOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Название (если свое)</label>
+                        <input type="text" id="prItem1Name" placeholder="Свое название">
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <div class="form-group" style="flex:1">
+                            <label>Количество</label>
+                            <input type="number" id="prItem1Qty" value="1" min="1">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Единица</label>
+                            <select id="prItem1Unit">
+                                <option value="pcs">шт</option>
+                                <option value="m">м</option>
+                                <option value="m2">м2</option>
+                                <option value="m3">м3</option>
+                                <option value="l">л</option>
+                                <option value="kg">кг</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Примечание</label>
+                        <input type="text" id="prItem1Note" placeholder="Примечание">
+                    </div>
+                </div>
+                <button class="btn btn-outline" onclick="addPRItem()" style="margin-bottom:12px">+ Добавить позицию</button>
+                <button class="btn" onclick="createPR()">Создать заявку</button>
+            `;
+            
+            showModal('Создать заявку на материалы', html);
+        }
+        
+        window.handleMaterialSelect = function(itemNum) {
+            const select = document.getElementById('prItem' + itemNum + 'Material');
+            const nameInput = document.getElementById('prItem' + itemNum + 'Name');
+            const unitSelect = document.getElementById('prItem' + itemNum + 'Unit');
+            
+            if (select && select.selectedOptions[0]) {
+                const option = select.selectedOptions[0];
+                if (nameInput && !nameInput.value) nameInput.value = option.getAttribute('data-name');
+                if (unitSelect && option.getAttribute('data-unit')) unitSelect.value = option.getAttribute('data-unit');
+            }
+        };
+        
+        window.addPRItem = function() {
+            const container = document.getElementById('prItems');
+            const count = container.children.length / 4 + 1;
+            
+            supabase.from('materials').select('*').order('category').order('name').then(({ data: materials }) => {
+                const materialOptions = materials?.map(m => 
+                    `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`
+                ).join('') || '';
+                
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <hr style="margin:16px 0">
+                    <div class="form-group">
+                        <label>Позиция ${count} - Материал</label>
+                        <select id="prItem${count}Material" onchange="handleMaterialSelect(${count})">
+                            <option value="">-- Выберите материал --</option>
+                            ${materialOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Название (если свое)</label>
+                        <input type="text" id="prItem${count}Name" placeholder="Свое название">
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <div class="form-group" style="flex:1">
+                            <label>Количество</label>
+                            <input type="number" id="prItem${count}Qty" value="1" min="1">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Единица</label>
+                            <select id="prItem${count}Unit">
+                                <option value="pcs">шт</option>
+                                <option value="m">м</option>
+                                <option value="m2">м2</option>
+                                <option value="m3">м3</option>
+                                <option value="l">л</option>
+                                <option value="kg">кг</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Примечание</label>
+                        <input type="text" id="prItem${count}Note" placeholder="Примечание">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        };
+        
+        window.createPR = async function() {
+            const items = [];
+            let i = 1;
+            
+            while (document.getElementById('prItem' + i + 'Name')) {
+                const name = document.getElementById('prItem' + i + 'Name').value;
+                if (name) {
+                    items.push({
+                        name,
+                        quantity: parseFloat(document.getElementById('prItem' + i + 'Qty').value) || 1,
+                        unit: document.getElementById('prItem' + i + 'Unit').value,
+                        note: document.getElementById('prItem' + i + 'Note').value
+                    });
+                }
+                i++;
+            }
+            
+            if (items.length === 0) {
+                showToast('Добавьте хотя бы одну позицию');
+                return;
+            }
+            
+            try {
+                // Create the PR
+                const prData = {
+                    status: 'pending',
+                    created_by: currentUserProfile?.id
+                };
+                
+                if (prType === 'task' && prRefId) {
+                    prData.task_id = prRefId;
+                } else if (prType === 'installation' && prRefId) {
+                    prData.installation_id = prRefId;
+                }
+                
+                const { data: pr, error: prError } = await supabase
+                    .from('purchase_requests')
+                    .insert([prData])
+                    .select()
+                    .single();
+                
+                if (prError) throw prError;
+                
+                // Add items
+                const itemsWithPRId = items.map(item => ({
+                    purchase_request_id: pr.id,
+                    ...item
+                }));
+                
+                const { error: itemsError } = await supabase
+                    .from('purchase_request_items')
+                    .insert(itemsWithPRId);
+                
+                if (itemsError) throw itemsError;
+                
+                closeModal();
+                showToast('Заявка создана');
+                
+                // Refresh the current view
+                if (currentView === 'purchaseRequests') {
+                    renderPurchaseRequests(document.getElementById('content'));
+                } else if (currentView === 'tasks' && prType === 'task') {
+                    showTaskDetail(prRefId);
+                } else if (currentView === 'installations' && prType === 'installation') {
+                    showInstallationDetail(prRefId);
+                }
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+
+        // ============================================================
+        // CALENDAR
+        // ============================================================
+        async function renderCalendar(content) {
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            
+            const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
+                              'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDay = firstDay.getDay() || 7;
+            const totalDays = lastDay.getDate();
+            
+            // Get tasks and installations for this month
+            const startDate = new Date(year, month, 1).toISOString();
+            const endDate = new Date(year, month + 1, 0).toISOString();
+            
+            const [tasks, installations] = await Promise.all([
+                supabase.from('tasks').select('id, title, status, due_date').gte('due_date', startDate).lte('due_date', endDate),
+                supabase.from('installations').select('id, title, status, scheduled_at').gte('scheduled_at', startDate).lte('scheduled_at', endDate)
+            ]);
+            
+            let html = `
+                <h2 style="margin-bottom: 16px">Календарь</h2>
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <button class="calendar-nav" onclick="changeMonth(-1)">◀</button>
+                        <div class="calendar-month">${monthNames[month]} ${year}</div>
+                        <button class="calendar-nav" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <div class="calendar-weekdays">
+                        <div class="calendar-weekday">Пн</div>
+                        <div class="calendar-weekday">Вт</div>
+                        <div class="calendar-weekday">Ср</div>
+                        <div class="calendar-weekday">Чт</div>
+                        <div class="calendar-weekday">Пт</div>
+                        <div class="calendar-weekday">Сб</div>
+                        <div class="calendar-weekday">Вс</div>
+                    </div>
+                    <div class="calendar-days">
+            `;
+            
+            // Previous month days
+            const prevMonthDays = new Date(year, month, 0).getDate();
+            for (let i = startDay - 1; i > 0; i--) {
+                html += `<div class="calendar-day other-month">${prevMonthDays - i + 1}</div>`;
+            }
+            
+            // Current month days
+            const today = new Date();
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+                
+                // Check for items on this day
+                const dayTasks = tasks.data?.filter(t => t.due_date && t.due_date.startsWith(dateStr)) || [];
+                const dayInstallations = installations.data?.filter(i => i.scheduled_at && i.scheduled_at.startsWith(dateStr)) || [];
+                const hasItems = dayTasks.length > 0 || dayInstallations.length > 0;
+                
+                html += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${hasItems ? 'has-items' : ''}" onclick="showCalendarDay('${dateStr}')">
+                        ${day}
+                        ${hasItems ? `<div class="calendar-day-items">${dayTasks.length + dayInstallations.length}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Next month days
+            const remainingDays = 42 - (startDay - 1 + totalDays);
+            for (let day = 1; day <= remainingDays; day++) {
+                html += `<div class="calendar-day other-month">${day}</div>`;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+        }
+        
+        window.changeMonth = function(delta) {
+            calendarDate.setMonth(calendarDate.getMonth() + delta);
+            renderContent();
+        };
+        
+        window.showCalendarDay = async function(dateStr) {
+            const [tasks, installations] = await Promise.all([
+                supabase.from('tasks').select('*').like('due_date', dateStr + '%'),
+                supabase.from('installations').select('*').like('scheduled_at', dateStr + '%')
+            ]);
+            
+            let html = `
+                <button class="btn btn-outline btn-sm" onclick="navigate('calendar')" style="margin-bottom: 16px">← Назад к календарю</button>
+                <h2 style="margin-bottom: 16px">${new Date(dateStr).toLocaleDateString('ru-RU')}</h2>
+            `;
+            
+            if (tasks.data && tasks.data.length > 0) {
+                html += `<h3 class="section-title">Задачи</h3>`;
+                tasks.data.forEach(task => {
+                    html += `
+                        <div class="calendar-item" onclick="showTaskDetail('${task.id}')">
+                            <div class="list-item-title">${task.title}</div>
+                            <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (installations.data && installations.data.length > 0) {
+                html += `<h3 class="section-title">Монтажи</h3>`;
+                installations.data.forEach(inst => {
+                    html += `
+                        <div class="calendar-item installation" onclick="showInstallationDetail('${inst.id}')">
+                            <div class="list-item-title">${inst.title}</div>
+                            <div class="calendar-item-time">${inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if ((!tasks.data || tasks.data.length === 0) && (!installations.data || installations.data.length === 0)) {
+                html += '<div class="empty-state"><p>Нет запланированных задач</p></div>';
+            }
+            
+            document.getElementById('content').innerHTML = html;
+        };
+
+        // ============================================================
+        // SCHEME
+        // ============================================================
+        async function renderScheme(content) {
+            const isManager = isElevatedUser();
+            
+            const [projects, tasks, installations] = await Promise.all([
+                isManager ? supabase.from('projects').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+                supabase.from('installations').select('*').order('scheduled_at', { ascending: true })
+            ]);
+            
+            let html = `
+                <h2 style="margin-bottom: 16px">Схема</h2>
+                <p style="margin-bottom: 16px; color: var(--text-muted)">Визуальное представление проектов, задач и монтажей</p>
+            `;
+            
+            // Simple scheme visualization
+            const projectCount = projects.data?.length || 0;
+            const taskCount = tasks.data?.length || 0;
+            const installationCount = installations.data?.length || 0;
+            const completedTasks = tasks.data?.filter(t => t.status === 'done').length || 0;
+            const completedInstallations = installations.data?.filter(i => i.status === 'done').length || 0;
+            
+            html += `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${projectCount}</div>
+                        <div class="stat-label">Проектов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${taskCount}</div>
+                        <div class="stat-label">Задач</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${installationCount}</div>
+                        <div class="stat-label">Монтажей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${completedTasks + completedInstallations}</div>
+                        <div class="stat-label">Выполнено</div>
+                    </div>
+                </div>
+            `;
+            
+            // Simple progress visualization
+            const totalItems = taskCount + installationCount;
+            const completedItems = completedTasks + completedInstallations;
+            const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+            
+            html += `
+                <div class="card">
+                    <h3 class="section-title">Общий прогресс</h3>
+                    <div style="background: var(--secondary); height: 20px; border-radius: 10px; overflow: hidden; margin-bottom: 8px;">
+                        <div style="background: linear-gradient(90deg, var(--accent), var(--accent2)); height: 100%; width: ${progress}%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <p style="text-align: center; color: var(--text-muted)">${progress}% выполнено</p>
+                </div>
+            `;
+            
+            // Status breakdown
+            const taskStatuses = {};
+            tasks.data?.forEach(t => {
+                taskStatuses[t.status] = (taskStatuses[t.status] || 0) + 1;
+            });
+            
+            const instStatuses = {};
+            installations.data?.forEach(i => {
+                instStatuses[i.status] = (instStatuses[i.status] || 0) + 1;
+            });
+            
+            html += `
+                <div class="card">
+                    <h3 class="section-title">Статусы задач</h3>
+                    ${Object.entries(taskStatuses).map(([status, count]) => `
+                        <div class="item-row">
+                            <span>${getStatusLabel(status)}</span>
+                            <span class="status status-${status}">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="card">
+                    <h3 class="section-title">Статусы монтажей</h3>
+                    ${Object.entries(instStatuses).map(([status, count]) => `
+                        <div class="item-row">
+                            <span>${getStatusLabel(status)}</span>
+                            <span class="status status-${status}">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = html;
+        }
+
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
+        // Auth tabs - using event delegation
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                const tabName = this.getAttribute('data-tab');
+                if (tabName) {
+                    showAuthTab(tabName);
+                    // Manually set active class since event.target might be different
+                    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        // Start the app
+        initApp();
+    </script>
+</body>
+</html>
+
 
