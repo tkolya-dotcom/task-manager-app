@@ -23,6 +23,7 @@ const Installations = () => {
     address: ''
   });
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -172,6 +173,7 @@ const Installations = () => {
               <thead>
                 <tr>
                   <th>Название</th>
+                  <th>Описание</th>
                   <th>Проект</th>
                   <th>Исполнитель</th>
                   <th>Статус</th>
@@ -184,6 +186,7 @@ const Installations = () => {
                 {installations.map(inst => (
                   <tr key={inst.id}>
                     <td>{inst.title}</td>
+                    <td>{inst.description ? (inst.description.length > 50 ? inst.description.substring(0, 50) + '...' : inst.description) : '-'}</td>
                     <td>{inst.project?.name || '-'}</td>
                     <td>{inst.assignee?.name || '-'}</td>
                     <td>

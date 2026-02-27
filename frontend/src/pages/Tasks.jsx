@@ -157,6 +157,7 @@ const Tasks = () => {
               <thead>
                 <tr>
                   <th>Название</th>
+                  <th>Описание</th>
                   <th>Проект</th>
                   <th>Исполнитель</th>
                   <th>Статус</th>
@@ -168,6 +169,7 @@ const Tasks = () => {
                 {tasks.map(task => (
                   <tr key={task.id}>
                     <td>{task.title}</td>
+                    <td>{task.description ? (task.description.length > 50 ? task.description.substring(0, 50) + '...' : task.description) : '-'}</td>
                     <td>{task.project?.name || '-'}</td>
                     <td>{task.assignee?.name || '-'}</td>
                     <td>
