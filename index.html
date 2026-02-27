@@ -1347,7 +1347,16 @@
         }
         
         // Initialize Supabase client
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase;
+        if (window.supabase) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+            window.addEventListener('load', function() {
+                if (window.supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                }
+            });
+        }
         
         // ============================================================
         // STATE
@@ -2042,7 +2051,9 @@
                         ${showProject && task.projects ? task.projects.name + ' - ' : ''}
                         ${task.users?.name || 'Не назначен'}
                     </div>
-                    ${task.description ? `<div style="margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.4;">${task.description}</div>` : ''}
+                    <div style="margin-top: 8px; font-size: 14px; color: var(--text); line-height: 1.4; ${task.description ? '' : 'color: var(--text-muted); font-style: italic;'}">
+                        ${task.description || 'Описание не указано'}
+                    </div>
                     ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button></div>` : ''}
                 </div>
             `;
