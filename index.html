@@ -1348,15 +1348,35 @@
         
         // Initialize Supabase client
         let supabase;
-        if (window.supabase) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else {
-            window.addEventListener('load', function() {
-                if (window.supabase) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                }
-            });
+        
+        function initSupabase() {
+            if (window.supabase && !supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client initialized:', supabase);
+            }
         }
+        
+        // Try to initialize immediately
+        initSupabase();
+        
+        // If not available yet, try again when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSupabase);
+        }
+        
+        // Also try on window load as fallback
+        window.addEventListener('load', initSupabase);
+        
+        // And poll every 500ms as final fallback
+        let pollCount = 0;
+        const pollInterval = setInterval(() => {
+            if (!supabase && pollCount < 20) {
+                initSupabase();
+                pollCount++;
+            } else {
+                clearInterval(pollInterval);
+            }
+        }, 500);
         
         // ============================================================
         // STATE
