@@ -1460,25 +1460,40 @@
             const role = document.getElementById('registerRole').value;
             const password = document.getElementById('registerPassword').value;
 
+            alert('DEBUG: Начало регистрации. Email: ' + email);
+
             if (!name || !email || !password) {
                 showAuthError('Заполните все поля');
+                alert('DEBUG: Не заполнены все поля');
                 return;
             }
 
             if (password.length < 6) {
                 showAuthError('Пароль должен быть минимум 6 символов');
+                alert('DEBUG: Пароль слишком короткий');
                 return;
             }
 
             try {
+                alert('DEBUG: Отправляем запрос на регистрацию в Supabase...');
+                
                 // Create user with Supabase Auth
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email,
                     password
                 });
 
+                alert('DEBUG: Получен ответ от Supabase. authData: ' + JSON.stringify({
+                    hasData: !!authData,
+                    hasUser: !!authData?.user,
+                    hasSession: !!authData?.session,
+                    hasError: !!authError,
+                    errorMessage: authError?.message
+                }));
+
                 if (authError) {
                     console.error('Auth signup error:', authError);
+                    alert('DEBUG: Ошибка при регистрации: ' + authError.message);
                     
                     if (authError.message && authError.message.includes('already been registered')) {
                         throw new Error('Пользователь с таким email уже существует. Попробуйте войти.');
@@ -1491,8 +1506,9 @@
 
                 if (!authData || !authData.user) {
                     if (authData && authData.session) {
-                        // Continue with session
+                        alert('DEBUG: Есть session, но нет user - продолжаем...');
                     } else {
+                        alert('DEBUG: Нет user и session, пробуем войти напрямую...');
                         // Try to sign in directly (might already exist)
                         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
                             email,
@@ -1504,8 +1520,11 @@
                         }
                         
                         authData = signInData;
+                        alert('DEBUG: Вход выполнен напрямую. hasSession: ' + !!authData?.session);
                     }
                 }
+
+                alert('DEBUG: Создаем профиль пользователя в БД...');
 
                 // Try to create user profile in users table
                 try {
@@ -1520,15 +1539,21 @@
 
                     if (profileError) {
                         console.log('Profile creation note:', profileError.message);
+                        alert('DEBUG: При создании профиля: ' + profileError.message);
+                    } else {
+                        alert('DEBUG: Профиль создан успешно');
                     }
                 } catch (profileCatch) {
                     console.log('Profile creation skipped:', profileCatch.message);
+                    alert('DEBUG: Создание профиля пропущено: ' + profileCatch.message);
                 }
 
+                alert('DEBUG: Сохраняем токен в localStorage...');
                 // Store the session
                 localStorage.setItem('token', authData.session.access_token);
                 localStorage.setItem('supabase_session', JSON.stringify(authData.session));
 
+                alert('DEBUG: Устанавливаем currentUser и currentUserProfile...');
                 // Set the current user profile
                 currentUser = { id: authData.user.id, email: authData.user.email };
                 currentUserProfile = {
@@ -1538,10 +1563,16 @@
                     role
                 };
 
+                alert('DEBUG: Вызываем showToast и showApp...');
                 showToast('Регистрация успешна!');
+                console.log('DEBUG: Registration successful, calling showApp()...');
                 showApp();
+                console.log('DEBUG: showApp() called, authScreen class:', document.getElementById('authScreen')?.className);
+                
+                alert('DEBUG: Регистрация завершена! Проверяем localStorage: token=' + (localStorage.getItem('token') ? 'есть' : 'нет'));
             } catch (error) {
                 console.error('Registration error:', error);
+                alert('DEBUG: ОШИБКА регистрации: ' + error.message);
                 showAuthError(error.message || 'Ошибка регистрации. Попробуйте позже.');
             }
         };
