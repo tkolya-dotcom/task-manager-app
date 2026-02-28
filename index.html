@@ -23,40 +23,45 @@
             --accent2: #00FF88;
             --glow: #0080FF;
             --text: #E0E0E0;
-            --text-muted: #032d67;
+            --text-muted: #8892a0;
             --warning: #FF6B00;
             --success: #00FF88;
             --danger: #FF3366;
             --border: rgba(0, 217, 255, 0.15);
-
+            
             /* Gradients */
             --gradient-javis: linear-gradient(135deg, rgba(0, 128, 255, 0.2) 0%, rgba(0, 217, 255, 0.1) 100%);
             --gradient-matrix: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, transparent 100%);
             --gradient-card: linear-gradient(145deg, #1A1A2E 0%, #12121f 100%);
-
+            
             /* Shadows & Glows */
             --glow-cyan: 0 0 20px rgba(0, 217, 255, 0.3), 0 0 40px rgba(0, 217, 255, 0.1);
             --glow-green: 0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 136, 0.1);
-            --glow-blue: 0 0 20px rgba(56, 25, 255, 0.489), 0 0 40px rgba(0, 128, 255, 0.1);
+            --glow-blue: 0 0 20px rgba(0, 128, 255, 0.3), 0 0 40px rgba(0, 128, 255, 0.1);
             --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         /* ========================================
            BASE STYLES
            ======================================== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: transparent;
+            background: var(--primary);
             min-height: 100vh;
             font-size: 16px;
             line-height: 1.5;
             color: var(--text);
+            background-image: 
+                radial-gradient(ellipse at top, rgba(0, 128, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                linear-gradient(180deg, #0A0A0F 0%, #0d0d14 100%);
+            background-attachment: fixed;
         }
 
 
@@ -451,23 +456,12 @@
            NAVIGATION
            ======================================== */
         .nav {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            display: flex;
             gap: 8px;
             margin-bottom: 16px;
-            max-width: 100%;
-        }
-
-        @media (max-width: 768px) {
-            .nav {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .nav {
-                grid-template-columns: 1fr;
-            }
+            overflow-x: auto;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .nav::-webkit-scrollbar {
@@ -1325,12 +1319,12 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- Matrix Rain Canvas -->
-    <canvas id="matrix-canvas" style="position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.4;"></canvas>
+    <canvas id="matrix-canvas" style="position: fixed; top: 0; left: 0; z-index: -1;"></canvas>
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <script>
+    <script type="module">
         // ============================================================
         // CONFIGURATION - Replace with your Supabase credentials
         // ============================================================
@@ -1346,37 +1340,8 @@
             };
         }
         
-        // Initialize Supabase client
-        let supabase;
-        
-        function initSupabase() {
-            if (window.supabase && !supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log('Supabase client initialized:', supabase);
-            }
-        }
-        
-        // Try to initialize immediately
-        initSupabase();
-        
-        // If not available yet, try again when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initSupabase);
-        }
-        
-        // Also try on window load as fallback
-        window.addEventListener('load', initSupabase);
-        
-        // And poll every 500ms as final fallback
-        let pollCount = 0;
-        const pollInterval = setInterval(() => {
-            if (!supabase && pollCount < 20) {
-                initSupabase();
-                pollCount++;
-            } else {
-                clearInterval(pollInterval);
-            }
-        }, 500);
+        // Initialize Supabase client (kept for potential fallback usage)
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // ============================================================
         // STATE
@@ -1429,33 +1394,19 @@
                 return;
             }
             
-            console.log('Login attempt for:', email);
-            console.log('Supabase client:', supabase);
-            console.log('Window supabase:', window.supabase);
-            
-            if (!supabase) {
-                showAuthError('Клиент Supabase не инициализирован. Подождите немного и попробуйте снова.');
-                return;
-            }
-            
             try {
                 // Use Supabase Auth directly
-                console.log('Attempting Supabase login...');
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
                 
-                console.log('Auth result:', { data: authData, error: authError });
-                
                 if (authError) {
-                    console.error('Auth error:', authError);
-                    throw new Error(authError.message || 'Ошибка входа');
-                }
-                
-                if (!authData || !authData.session) {
-                    console.error('No session returned');
-                    throw new Error('Не удалось получить сессию');
+                    // Handle specific error cases
+                    if (authError.message && (authError.message.includes('user_already_exists') || authError.message.includes('already been registered'))) {
+                        throw new Error('Пользователь с таким email уже существует. Попробуйте войти или используйте другой email.');
+                    }
+                    throw new Error(authError.message);
                 }
                 
                 // Store the session
@@ -1468,8 +1419,6 @@
                     .select('*')
                     .eq('id', authData.user.id)
                     .single();
-                
-                console.log('User profile:', { data: userData, error: userError });
                 
                 if (userError && userError.code !== 'PGRST116') {
                     console.error('Error fetching user profile:', userError);
@@ -1484,11 +1433,9 @@
                     role: 'worker'
                 };
                 
-                console.log('Login successful, currentUserProfile:', currentUserProfile);
                 showApp();
             } catch (error) {
-                console.error('Login error:', error);
-                showAuthError(error.message || 'Ошибка входа. Проверьте email и пароль.');
+                showAuthError(error.message);
             }
         };
         
@@ -1529,7 +1476,7 @@
 
                 if (!authData || !authData.user) {
                     if (authData && authData.session) {
-                        // Continue with existing session
+                        // Continue with session
                     } else {
                         // Try to sign in directly (might already exist)
                         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -1547,12 +1494,12 @@
 
                 // Try to create user profile in users table
                 try {
-const { error: profileError } = await supabase
+                    const { error: profileError } = await supabase
                         .from('users')
                         .insert([{
                             id: authData.user.id,
                             email,
-                            display_name: name,
+                            name,
                             role
                         }]);
 
@@ -1659,7 +1606,7 @@ const { error: profileError } = await supabase
             document.getElementById('app').classList.remove('hidden');
             
             const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : (currentUserProfile?.role === 'worker' ? 'Исполнитель' : 'Исполнитель'));
-document.getElementById('headerTitle').textContent = currentUserProfile?.display_name || currentUserProfile?.name || 'Пользователь';
+            document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь';
             document.getElementById('headerUser').textContent = '> ' + roleLabel;
             
             renderNav();
@@ -2085,9 +2032,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                         ${showProject && task.projects ? task.projects.name + ' - ' : ''}
                         ${task.users?.name || 'Не назначен'}
                     </div>
-                    <div style="margin-top: 8px; font-size: 14px; color: var(--text); line-height: 1.4; ${task.description ? '' : 'color: var(--text-muted); font-style: italic;'}">
-                        ${task.description || 'Описание не указано'}
-                    </div>
                     ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button></div>` : ''}
                 </div>
             `;
@@ -2197,16 +2141,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                     <div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div>
                 </div>
             `;
-
-            // Display task comments/notes if any
-            if (task.description) {
-                html += `
-                    <div class="card" style="border-left: 3px solid var(--accent);">
-                        <h3 class="section-title" style="color: var(--accent);">📝 Описание / Комментарий</h3>
-                        <p style="margin: 0; color: var(--text); line-height: 1.6; white-space: pre-wrap;">${task.description}</p>
-                    </div>
-                `;
-            }
             
             if (canEdit) {
                 html += `
@@ -2344,8 +2278,7 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                         ${showProject && inst.projects ? inst.projects.name + ' - ' : ''}
                         ${inst.address || ''} - ${date}
                     </div>
-                    ${inst.description ? `<div style="margin-top: 8px; font-size: 13px; color: var(--text-muted); line-height: 1.4;">${inst.description}</div>` : ''}
-                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editInstallation('${inst.id}')">✎</button></div>` : ''}
+                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();showInstallationDetail('${inst.id}')">✎</button></div>` : ''}
                 </div>
             `;
         }
@@ -2373,8 +2306,7 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             });
             html += `</div>`;
 
-            const canCreateInstallation = isManager || currentUserProfile?.role === 'deputy_head';
-            if (canCreateInstallation) {
+            if (isManager) {
                 html += `<button class="btn" onclick="showCreateInstallationModal()">+ Новый монтаж</button><br><br>`;
             }
 
@@ -2460,16 +2392,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                     <div class="detail-meta">Исполнитель: ${assigneeName}</div>
                 </div>
             `;
-
-            // Display installation comments/notes if any
-            if (inst.description) {
-                html += `
-                    <div class="card" style="border-left: 3px solid var(--accent2);">
-                        <h3 class="section-title" style="color: var(--accent2);">📝 Описание / Комментарий</h3>
-                        <p style="margin: 0; color: var(--text); line-height: 1.6; white-space: pre-wrap;">${inst.description}</p>
-                    </div>
-                `;
-            }
 
             if (canEdit) {
                 html += `
@@ -2596,9 +2518,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             } else {
                 prs.forEach(pr => {
                     const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
-                    const isManager = currentUserProfile?.role === 'manager';
-                    const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
-                    const canDelete = isManager || (isOwner && (pr.status === 'draft' || pr.status === 'pending'));
                     html += `
                         <div class="card card-clickable" onclick="showPRDetail('${pr.id}')">
                             <div class="list-item-header">
@@ -2606,7 +2525,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
                             </div>
                             <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}</div>
-                            ${canDelete ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();deletePR('${pr.id}')">✕</button></div>` : ''}
                         </div>
                     `;
                 });
@@ -2616,9 +2534,7 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
         }
 
         async function showPRDetail(prId) {
-            console.log('showPRDetail called with prId:', prId);
-            try {
-                const { data: pr, error } = await supabase
+            const { data: pr } = await supabase
                 .from('purchase_requests')
                 .select('*')
                 .eq('id', prId)
@@ -2708,23 +2624,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
 
             if (canApprove) {
                 html += `
-                    <div class="card">
-                        <h3 class="section-title">Изменить статус заявки</h3>
-                        <div class="form-group">
-                            <label>Новый статус</label>
-                            <select id="prStatus" onchange="togglePickupAddress()">
-                                <option value="approved" ${pr.status === 'approved' ? 'selected' : ''}>На согласована</option>
-                                <option value="ordered" ${pr.status === 'ordered' ? 'selected' : ''}>В заказе</option>
-                                <option value="ready_for_pickup" ${pr.status === 'ready_for_pickup' ? 'selected' : ''}>Готова к получению</option>
-                                <option value="received" ${pr.status === 'received' ? 'selected' : ''}>Получено</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="pickupAddressGroup" style="display: ${pr.status === 'ready_for_pickup' ? 'block' : 'none'}">
-                            <label>Адрес получения</label>
-                            <input type="text" id="pickupAddress" placeholder="Введите адрес получения" value="${pr.pickup_address || ''}">
-                        </div>
-                        <button class="btn" onclick="updatePRStatus('${pr.id}')">Сохранить статус</button>
-                    </div>
                     <div class="actions">
                         <button class="btn btn-success" onclick="approvePR('${pr.id}')">Одобрить</button>
                         <button class="btn btn-danger" onclick="rejectPR('${pr.id}')">Отклонить</button>
@@ -2734,12 +2633,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
 
             if (canEdit) {
                 html += `<button class="btn btn-warning" onclick="editPR('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
-            }
-
-            // Delete button for workers (their own draft/pending requests) or managers
-            const canDelete = isManager || (isOwner && (pr.status === 'draft' || pr.status === 'pending'));
-            if (canDelete) {
-                html += `<button class="btn btn-danger" onclick="deletePR('${pr.id}')">Удалить заявку</button>`;
             }
 
             document.getElementById('content').innerHTML = html;
@@ -2845,30 +2738,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             }
         };
 
-        window.deletePR = async function(prId) {
-            if (!confirm('Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.')) {
-                return;
-            }
-
-            try {
-                // Delete the purchase request items first
-                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
-
-                // Delete the purchase request
-                const { error } = await supabase
-                    .from('purchase_requests')
-                    .delete()
-                    .eq('id', prId);
-
-                if (error) throw error;
-
-                showToast('Заявка удалена');
-                navigate('purchaseRequests');
-            } catch (error) {
-                showToast('Ошибка: ' + error.message);
-            }
-        };
-
         // ============================================================
         // HELPER FUNCTIONS
         // ============================================================
@@ -2888,10 +2757,7 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             const labels = {
                 'draft': 'Черновик',
                 'pending': 'На рассмотрении',
-                'approved': 'На согласована',
-                'ordered': 'В заказе',
-                'ready_for_pickup': 'Готова к получению',
-                'received': 'Получено',
+                'approved': 'Одобрена',
                 'rejected': 'Отклонена'
             };
             return labels[status] || status;
@@ -2904,14 +2770,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 3000);
-        };
-
-        window.togglePickupAddress = function() {
-            const status = document.getElementById('prStatus').value;
-            const pickupAddressGroup = document.getElementById('pickupAddressGroup');
-            if (pickupAddressGroup) {
-                pickupAddressGroup.style.display = status === 'ready_for_pickup' ? 'block' : 'none';
-            }
         };
 
         // ============================================================
@@ -3122,12 +2980,12 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             const project_id = document.getElementById('taskProject').value;
             const assignee_id = document.getElementById('taskAssignee').value;
             const status = document.getElementById('taskStatus').value;
-
+            
             if (!title) {
                 showToast('Введите название задачи');
                 return;
             }
-
+            
             try {
                 const { error } = await supabase
                     .from('tasks')
@@ -3139,216 +2997,12 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                         status,
                         created_by: currentUserProfile?.id
                     }]);
-
+                
                 if (error) throw error;
-
+                
                 closeModal();
                 showToast('Задача создана');
                 renderTasks(document.getElementById('content'));
-            } catch (error) {
-                showToast('Ошибка: ' + error.message);
-            }
-        };
-
-        window.editTask = async function(taskId) {
-            const { data: task } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('id', taskId)
-                .single();
-
-            if (!task) return;
-
-            // Get all projects and users for selection
-            const [{ data: projects }, { data: users }] = await Promise.all([
-                supabase.from('projects').select('id, name'),
-                supabase.from('users').select('id, name')
-            ]);
-
-            const projectOptions = projects?.map(p =>
-                `<option value="${p.id}" ${task.project_id === p.id ? 'selected' : ''}>${p.name}</option>`
-            ).join('') || '';
-
-            const userOptions = users?.map(u =>
-                `<option value="${u.id}" ${task.assignee_id === u.id ? 'selected' : ''}>${u.name}</option>`
-            ).join('') || '';
-
-            showModal('Редактировать задачу', `
-                <div class="form-group">
-                    <label>Название</label>
-                    <input type="text" id="editTaskTitle" value="${task.title || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Описание</label>
-                    <textarea id="editTaskDescription">${task.description || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>Проект</label>
-                    <select id="editTaskProject">
-                        <option value="">-- Выберите проект --</option>
-                        ${projectOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Исполнитель</label>
-                    <select id="editTaskAssignee">
-                        <option value="">-- Выберите исполнителя --</option>
-                        ${userOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Статус</label>
-                    <select id="editTaskStatus">
-                        <option value="new" ${task.status === 'new' ? 'selected' : ''}>Новая</option>
-                        <option value="planned" ${task.status === 'planned' ? 'selected' : ''}>Запланирована</option>
-                        <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>В работе</option>
-                        <option value="waiting_materials" ${task.status === 'waiting_materials' ? 'selected' : ''}>Ожидание материалов</option>
-                        <option value="done" ${task.status === 'done' ? 'selected' : ''}>Выполнена</option>
-                        <option value="postponed" ${task.status === 'postponed' ? 'selected' : ''}>Отложена</option>
-                    </select>
-                </div>
-                <button class="btn" onclick="saveEditedTask('${task.id}')">Сохранить</button>
-            `);
-        };
-
-        window.saveEditedTask = async function(taskId) {
-            const title = document.getElementById('editTaskTitle').value;
-            const description = document.getElementById('editTaskDescription').value;
-            const project_id = document.getElementById('editTaskProject').value;
-            const assignee_id = document.getElementById('editTaskAssignee').value;
-            const status = document.getElementById('editTaskStatus').value;
-
-            if (!title) {
-                showToast('Введите название задачи');
-                return;
-            }
-
-            try {
-                const { error } = await supabase
-                    .from('tasks')
-                    .update({
-                        title,
-                        description,
-                        project_id: project_id || null,
-                        assignee_id: assignee_id || null,
-                        status,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', taskId);
-
-                if (error) throw error;
-
-                closeModal();
-                showToast('Задача обновлена');
-                renderTasks(document.getElementById('content'));
-            } catch (error) {
-                showToast('Ошибка: ' + error.message);
-            }
-        };
-
-        window.editInstallation = async function(instId) {
-            const { data: inst } = await supabase
-                .from('installations')
-                .select('*')
-                .eq('id', instId)
-                .single();
-
-            if (!inst) return;
-
-            // Get all projects and users for selection
-            const [{ data: projects }, { data: users }] = await Promise.all([
-                supabase.from('projects').select('id, name'),
-                supabase.from('users').select('id, name')
-            ]);
-
-            const projectOptions = projects?.map(p =>
-                `<option value="${p.id}" ${inst.project_id === p.id ? 'selected' : ''}>${p.name}</option>`
-            ).join('') || '';
-
-            const userOptions = users?.map(u =>
-                `<option value="${u.id}" ${inst.assignee_id === u.id ? 'selected' : ''}>${u.name}</option>`
-            ).join('') || '';
-
-            showModal('Редактировать монтаж', `
-                <div class="form-group">
-                    <label>Название</label>
-                    <input type="text" id="editInstTitle" value="${inst.title || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Описание</label>
-                    <textarea id="editInstDescription">${inst.description || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>Проект</label>
-                    <select id="editInstProject">
-                        <option value="">-- Выберите проект --</option>
-                        ${projectOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Исполнитель</label>
-                    <select id="editInstAssignee">
-                        <option value="">-- Выберите исполнителя --</option>
-                        ${userOptions}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Адрес</label>
-                    <input type="text" id="editInstAddress" value="${inst.address || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Дата и время</label>
-                    <input type="datetime-local" id="editInstScheduledAt" value="${inst.scheduled_at ? new Date(inst.scheduled_at).toISOString().slice(0, 16) : ''}">
-                </div>
-                <div class="form-group">
-                    <label>Статус</label>
-                    <select id="editInstStatus">
-                        <option value="new" ${inst.status === 'new' ? 'selected' : ''}>Новый</option>
-                        <option value="planned" ${inst.status === 'planned' ? 'selected' : ''}>Запланирован</option>
-                        <option value="in_progress" ${inst.status === 'in_progress' ? 'selected' : ''}>В работе</option>
-                        <option value="waiting_materials" ${inst.status === 'waiting_materials' ? 'selected' : ''}>Ожидание материалов</option>
-                        <option value="done" ${inst.status === 'done' ? 'selected' : ''}>Выполнен</option>
-                        <option value="postponed" ${inst.status === 'postponed' ? 'selected' : ''}>Отложен</option>
-                    </select>
-                </div>
-                <button class="btn" onclick="saveEditedInstallation('${inst.id}')">Сохранить</button>
-            `);
-        };
-
-        window.saveEditedInstallation = async function(instId) {
-            const title = document.getElementById('editInstTitle').value;
-            const description = document.getElementById('editInstDescription').value;
-            const project_id = document.getElementById('editInstProject').value;
-            const assignee_id = document.getElementById('editInstAssignee').value;
-            const address = document.getElementById('editInstAddress').value;
-            const scheduled_at = document.getElementById('editInstScheduledAt').value;
-            const status = document.getElementById('editInstStatus').value;
-
-            if (!title) {
-                showToast('Введите название монтажа');
-                return;
-            }
-
-            try {
-                const { error } = await supabase
-                    .from('installations')
-                    .update({
-                        title,
-                        description,
-                        project_id: project_id || null,
-                        assignee_id: assignee_id || null,
-                        address,
-                        scheduled_at: scheduled_at || null,
-                        status,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', instId);
-
-                if (error) throw error;
-
-                closeModal();
-                showToast('Монтаж обновлен');
-                renderInstallations(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
@@ -3374,8 +3028,8 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
                             <input type="text" id="instTitle" placeholder="Название монтажа">
                         </div>
                         <div class="form-group">
-                            <label>Описание</label>
-                            <textarea id="instDescription" placeholder="Описание монтажа"></textarea>
+                            <labellabel>
+                            <>Описание</textarea id="instDescription" placeholder="Описание монтажа"></textarea>
                         </div>
                         <div class="form-group">
                             <label>Проект</label>
@@ -3955,14 +3609,6 @@ document.getElementById('headerTitle').textContent = currentUserProfile?.display
             // Animate
             setInterval(draw, 35);
         }
-
-        // ============================================================
-        // MAKE FUNCTIONS GLOBAL FOR ONCLICK
-        // ============================================================
-        window.showPRDetail = showPRDetail;
-        window.showTaskDetail = showTaskDetail;
-        window.showInstallationDetail = showInstallationDetail;
-        window.showProjectDetail = showProjectDetail;
 
         // ============================================================
         // INITIALIZATION
