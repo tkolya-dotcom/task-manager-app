@@ -1547,12 +1547,12 @@
 
                 // Try to create user profile in users table
                 try {
-                    const { error: profileError } = await supabase
+const { error: profileError } = await supabase
                         .from('users')
                         .insert([{
                             id: authData.user.id,
                             email,
-                            name,
+                            display_name: name,
                             role
                         }]);
 
@@ -1659,7 +1659,7 @@
             document.getElementById('app').classList.remove('hidden');
             
             const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : (currentUserProfile?.role === 'worker' ? 'Исполнитель' : 'Исполнитель'));
-            document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь';
+document.getElementById('headerTitle').textContent = currentUserProfile?.display_name || currentUserProfile?.name || 'Пользователь';
             document.getElementById('headerUser').textContent = '> ' + roleLabel;
             
             renderNav();
