@@ -1409,19 +1409,33 @@
                 return;
             }
             
+            console.log('Login attempt for:', email);
+            console.log('Supabase client:', supabase);
+            console.log('Window supabase:', window.supabase);
+            
+            if (!supabase) {
+                showAuthError('Клиент Supabase не инициализирован. Подождите немного и попробуйте снова.');
+                return;
+            }
+            
             try {
                 // Use Supabase Auth directly
+                console.log('Attempting Supabase login...');
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
                 
+                console.log('Auth result:', { data: authData, error: authError });
+                
                 if (authError) {
-                    // Handle specific error cases
-                    if (authError.message && (authError.message.includes('user_already_exists') || authError.message.includes('already been registered'))) {
-                        throw new Error('Пользователь с таким email уже существует. Попробуйте войти или используйте другой email.');
-                    }
-                    throw new Error(authError.message);
+                    console.error('Auth error:', authError);
+                    throw new Error(authError.message || 'Ошибка входа');
+                }
+                
+                if (!authData || !authData.session) {
+                    console.error('No session returned');
+                    throw new Error('Не удалось получить сессию');
                 }
                 
                 // Store the session
@@ -1434,6 +1448,8 @@
                     .select('*')
                     .eq('id', authData.user.id)
                     .single();
+                
+                console.log('User profile:', { data: userData, error: userError });
                 
                 if (userError && userError.code !== 'PGRST116') {
                     console.error('Error fetching user profile:', userError);
@@ -1448,9 +1464,11 @@
                     role: 'worker'
                 };
                 
+                console.log('Login successful, currentUserProfile:', currentUserProfile);
                 showApp();
             } catch (error) {
-                showAuthError(error.message);
+                console.error('Login error:', error);
+                showAuthError(error.message || 'Ошибка входа. Проверьте email и пароль.');
             }
         };
         
