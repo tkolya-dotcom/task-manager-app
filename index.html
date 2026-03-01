@@ -457,11 +457,11 @@
            ======================================== */
         .nav {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 16px;
-            overflow-x: auto;
+            justify-content: center;
             padding-bottom: 8px;
-            -webkit-overflow-scrolling: touch;
         }
 
         .nav::-webkit-scrollbar {
@@ -489,6 +489,10 @@
             color: var(--text-muted);
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
+            flex: 1 1 auto;
+            min-width: 80px;
+            max-width: 150px;
+            text-align: center;
         }
 
         .nav-btn:hover {
@@ -2278,7 +2282,7 @@
 
             const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован';
             return `
-                <div class="card card-clickable" onclick="showInstallationDetail('${inst.id}')">
+                <div class="card card-clickable" onclick="window.showInstallationDetail('${inst.id}')">
                     <div class="list-item-header">
                         <div class="list-item-title">${inst.title}</div>
                         <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
@@ -3652,7 +3656,7 @@
                 html += `<h3 class="section-title">Монтажи</h3>`;
                 installations.data.forEach(inst => {
                     html += `
-                        <div class="calendar-item installation" onclick="showInstallationDetail('${inst.id}')">
+                        <div class="calendar-item installation" onclick="window.showInstallationDetail('${inst.id}')">
                             <div class="list-item-title">${inst.title}</div>
                             <div class="calendar-item-time">${inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
                         </div>
@@ -3805,7 +3809,7 @@
 
             function draw() {
                 // Black background with slight transparency for trail effect
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.01)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Green text
