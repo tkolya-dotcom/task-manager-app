@@ -16,9 +16,12 @@ const PurchaseRequests = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showItemsModal, setShowItemsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [editingRequest, setEditingRequest] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   
   // Form states
   const [formData, setFormData] = useState({
@@ -184,6 +187,67 @@ const PurchaseRequests = () => {
     }
   };
 
+  // Open detail modal
+  const openDetailModal = async (request) => {
+    try {
+      const data = await purchaseRequestsApi.getById(request.id);
+      setSelectedRequest(data.purchaseRequest);
+      setShowDetailModal(true);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Handle approve request
+  const handleApprove = async () => {
+    if (!selectedRequest) return;
+    setError('');
+    try {
+      await purchaseRequestsApi.updateStatus(selectedRequest.id, 'approved', '');
+      setShowDetailModal(false);
+      setSelectedRequest(null);
+      loadRequests();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Handle reject - open reason modal
+  const openRejectModal = () => {
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  // Handle reject with reason
+  const handleReject = async () => {
+    if (!selectedRequest) return;
+    setError('');
+    try {
+      await purchaseRequestsApi.updateStatus(selectedRequest.id, 'rejected', rejectReason);
+      setShowRejectModal(false);
+      setShowDetailModal(false);
+      setSelectedRequest(null);
+      setRejectReason('');
+      loadRequests();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Handle submit for review (worker edits and resubmits)
+  const handleSubmitForReview = async () => {
+    if (!selectedRequest) return;
+    setError('');
+    try {
+      await purchaseRequestsApi.updateStatus(selectedRequest.id, 'pending', '');
+      setShowDetailModal(false);
+      setSelectedRequest(null);
+      loadRequests();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Загрузка...</div>;
   }
@@ -246,7 +310,11 @@ const PurchaseRequests = () => {
               </thead>
               <tbody>
                 {requests.map(request => (
-                  <tr key={request.id}>
+                  <tr 
+                    key={request.id} 
+                    onClick={() => openDetailModal(request)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td>{getRelatedName(request)}</td>
                     <td>{request.creator?.name || '-'}</td>
                     <td>
@@ -256,7 +324,7 @@ const PurchaseRequests = () => {
                     </td>
                     <td>{request.comment || '-'}</td>
                     <td>{new Date(request.created_at).toLocaleDateString('ru-RU')}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: '5px', flexDirection: 'column' }}>
                         {isManager && request.status === 'pending' && (
                           <div style={{ display: 'flex', gap: '5px' }}>
@@ -285,7 +353,7 @@ const PurchaseRequests = () => {
                             Управление items ({request.items?.length || 0})
                           </button>
                         )}
-                        {((isManager || (isWorker && request.creator?.id === user?.id)) && request.status === 'draft') && (
+                        {((isManager || (isWorker && request.creator?.id === user?.id)) && (request.status === 'draft' || request.status === 'rejected')) && (
                           <button
                             className="btn btn-secondary"
                             onClick={() => openEditModal(request)}
@@ -536,12 +604,192 @@ const PurchaseRequests = () => {
               ) : (
                 <p style={{ color: '#757575' }}>Нет items в этой заявке</p>
               )}
+
+              {/* Submit for Review Button - for workers with draft/rejected requests */}
+              {isWorker && selectedRequest && selectedRequest.creator?.id === user?.id && (selectedRequest.status === 'draft' || selectedRequest.status === 'rejected') && (
+                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #e0e0e0' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      try {
+                        await purchaseRequestsApi.updateStatus(selectedRequest.id, 'pending', '');
+                        setShowItemsModal(false);
+                        setSelectedRequest(null);
+                        loadRequests();
+                      } catch (err) {
+                        setError(err.message);
+                      }
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    Отправить на рассмотрение
+                  </button>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => { setShowItemsModal(false); setSelectedRequest(null); setEditingItem(null); }}>
                 Закрыть
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal - Request Details */}
+      {showDetailModal && selectedRequest && (
+        <div className="modal-overlay" onClick={() => { setShowDetailModal(false); setSelectedRequest(null); }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h2>Детали заявки</h2>
+              <button className="modal-close" onClick={() => { setShowDetailModal(false); setSelectedRequest(null); }}>&times;</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              {error && <div className="error">{error}</div>}
+              
+              {/* Request Info */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <strong>Связанный объект:</strong>
+                    <p>{getRelatedName(selectedRequest)}</p>
+                  </div>
+                  <div>
+                    <strong>Статус:</strong>
+                    <p>
+                      <span className={`status-badge status-${selectedRequest.status}`}>
+                        {getStatusLabel(selectedRequest.status)}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <strong>Создатель:</strong>
+                    <p>{selectedRequest.creator?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <strong>Дата создания:</strong>
+                    <p>{new Date(selectedRequest.created_at).toLocaleString('ru-RU')}</p>
+                  </div>
+                </div>
+                {selectedRequest.comment && selectedRequest.status !== 'rejected' && (
+                  <div style={{ marginBottom: '15px' }}>
+                    <strong>Комментарий:</strong>
+                    <p>{selectedRequest.comment}</p>
+                  </div>
+                )}
+                {selectedRequest.status === 'rejected' && (
+                  <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#ffebee', borderRadius: '4px' }}>
+                    <strong>Причина отклонения:</strong>
+                    <p>{selectedRequest.comment || 'Причина не указана'}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Items List */}
+              <h4>Список позиций</h4>
+              {selectedRequest.items && selectedRequest.items.length > 0 ? (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>Название</th>
+                      <th>Количество</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedRequest.items.map((item, index) => (
+                      <tr key={item.id}>
+                        <td>{index + 1}</td>
+                        <td>{item.name}</td>
+                        <td>{item.quantity} {item.unit}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p style={{ color: '#757575' }}>Нет позиций в этой заявке</p>
+              )}
+
+              {/* Manager Actions */}
+              {isManager && selectedRequest.status === 'pending' && (
+                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
+                  <h4>Действия руководителя</h4>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <button
+                      className="btn btn-success"
+                      onClick={handleApprove}
+                    >
+                      Одобрить
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={openRejectModal}
+                    >
+                      Отклонить
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Worker Actions - Edit and Submit for Review */}
+              {isWorker && selectedRequest.creator?.id === user?.id && (selectedRequest.status === 'draft' || selectedRequest.status === 'rejected') && (
+                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
+                  <h4>Действия исполнителя</h4>
+                  <p style={{ marginBottom: '10px', color: '#757575' }}>
+                    Вы можете отредактировать позиции и отправить заявку на рассмотрение
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      openItemsModal(selectedRequest);
+                    }}
+                  >
+                    Редактировать и отправить на рассмотрение
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowDetailModal(false); setSelectedRequest(null); }}>
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason Modal */}
+      {showRejectModal && (
+        <div className="modal-overlay" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>Причина отклонения</h2>
+              <button className="modal-close" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>&times;</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleReject(); }}>
+              <div style={{ padding: '20px' }}>
+                {error && <div className="error">{error}</div>}
+                <div className="form-group">
+                  <label>Укажите причину отклонения заявки:</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    required
+                    placeholder="Например: Недостаточно средств в бюджете"
+                    style={{ minHeight: '100px' }}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>
+                  Отмена
+                </button>
+                <button type="submit" className="btn btn-danger">
+                  Отклонить
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
