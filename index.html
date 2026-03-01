@@ -2999,7 +2999,21 @@ const buttons = [
         };
 
         window.approvePR = async function(prId) {
-            const comment = prompt('Комментарий (необязательно):') || '';
+            // Show approval modal with optional comment
+            showModal('Одобрение заявки', `
+                <div class="form-group">
+                    <label>Комментарий (необязательно):</label>
+                    <textarea id="approveComment" rows="3" placeholder="Добавьте комментарий при необходимости" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(10,10,15,0.8);color:var(--text);font-size:16px;font-family:inherit;resize:vertical;"></textarea>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button class="btn btn-success" onclick="confirmApprovePR('${prId}')">Одобрить</button>
+                </div>
+            `);
+        };
+
+        window.confirmApprovePR = async function(prId) {
+            const comment = document.getElementById('approveComment').value;
 
             try {
                 const { error } = await supabase
@@ -3014,6 +3028,7 @@ const buttons = [
 
                 if (error) throw error;
 
+                closeModal();
                 showToast('Заявка одобрена');
                 showPRDetail(prId);
             } catch (error) {
@@ -3022,7 +3037,26 @@ const buttons = [
         };
 
         window.rejectPR = async function(prId) {
-            const comment = prompt('Причина отказа:') || '';
+            // Show rejection reason modal instead of using prompt
+            showModal('Причина отклонения', `
+                <div class="form-group">
+                    <label>Укажите причину отклонения заявки:</label>
+                    <textarea id="rejectReason" rows="4" placeholder="Например: Недостаточно средств в бюджете" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(10,10,15,0.8);color:var(--text);font-size:16px;font-family:inherit;resize:vertical;"></textarea>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button class="btn btn-danger" onclick="confirmRejectPR('${prId}')">Отклонить</button>
+                </div>
+            `);
+        };
+
+        window.confirmRejectPR = async function(prId) {
+            const comment = document.getElementById('rejectReason').value;
+
+            if (!comment || comment.trim() === '') {
+                showToast('Укажите причину отклонения');
+                return;
+            }
 
             try {
                 const { error } = await supabase
@@ -3036,6 +3070,7 @@ const buttons = [
 
                 if (error) throw error;
 
+                closeModal();
                 showToast('Заявка отклонена');
                 showPRDetail(prId);
             } catch (error) {
@@ -3886,7 +3921,7 @@ const buttons = [
 
             function draw() {
                 // Black background with slight transparency for trail effect
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.01)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.001)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Green text
@@ -3912,7 +3947,7 @@ const buttons = [
             }
 
             // Animate
-            setInterval(draw, 35);
+            setInterval(draw, 80);
         }
 
         // ============================================================
