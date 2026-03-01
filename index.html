@@ -582,6 +582,59 @@
         }
 
         /* ========================================
+           SWIPE TO DELETE
+           ======================================== */
+        .swipeable-item {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .swipe-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            background: linear-gradient(90deg, transparent, var(--danger));
+            padding-right: 16px;
+        }
+
+        .swipe-actions.show {
+            transform: translateX(0);
+        }
+
+        .swipe-delete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .swipe-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .swipe-overlay.show {
+            display: block;
+        }
+
+        /* ========================================
            AUTH SCREEN
            ======================================== */
         .auth-screen {
@@ -2861,7 +2914,7 @@ const buttons = [
             if (canApprove) {
                 actionsHtml = `<div class="actions"><button class="btn btn-success" onclick="approvePRModal('${pr.id}')">Одобрить</button><button class="btn btn-danger" onclick="rejectPRModal('${pr.id}')">Отклонить</button></div>`;
             }
-            actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+            actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button><button class="btn btn-danger" style="margin-top:8px" onclick="deletePRModal('${pr.id}')">Удалить заявку</button>`;
 
             showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
         };
@@ -3936,6 +3989,146 @@ const buttons = [
             // Animate
             setInterval(draw, 80);
         }
+
+        // ============================================================
+        // SWIPE TO DELETE FUNCTIONALITY
+        // ============================================================
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let currentSwipeItem = null;
+
+        // Initialize swipe functionality on content
+        function initSwipeHandlers() {
+            document.querySelectorAll('.card').forEach(card => {
+                if (!card.closest('.modal')) {
+                    card.addEventListener('touchstart', handleTouchStart, { passive: true });
+                    card.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    card.addEventListener('touchend', handleTouchEnd);
+                }
+            });
+        }
+
+        function handleTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            currentSwipeItem = e.currentTarget;
+        }
+
+        function handleTouchMove(e) {
+            if (!currentSwipeItem) return;
+            
+            const touchCurrentX = e.touches[0].clientX;
+            const touchCurrentY = e.touches[0].clientY;
+            
+            const diffX = touchCurrentX - touchStartX;
+            const diffY = touchCurrentY - touchStartY;
+            
+            // Only handle horizontal swipe (more than 50px and less vertical movement)
+            if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+                e.preventDefault();
+                
+                if (diffX < 0) {
+                    // Swipe left - show delete action
+                    currentSwipeItem.style.transform = `translateX(${diffX}px)`;
+                    
+                    // Add visual feedback
+                    if (diffX < -100) {
+                        currentSwipeItem.style.background = 'rgba(255, 51, 102, 0.2)';
+                    } else {
+                        currentSwipeItem.style.background = '';
+                    }
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (!currentSwipeItem) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const diffX = touchEndX - touchStartX;
+            
+            // If swiped left more than 100px, show delete confirmation
+            if (diffX < -100) {
+                const itemId = currentSwipeItem.getAttribute('data-id');
+                const itemType = currentSwipeItem.getAttribute('data-type');
+                
+                if (itemId && itemType) {
+                    showDeleteConfirmation(itemId, itemType);
+                }
+            }
+            
+            // Reset transform
+            currentSwipeItem.style.transform = '';
+            currentSwipeItem.style.background = '';
+            currentSwipeItem = null;
+        }
+
+        function showDeleteConfirmation(id, type) {
+            let message = '';
+            let confirmText = 'Удалить';
+            
+            switch(type) {
+                case 'task':
+                    message = 'Вы уверены, что хотите удалить эту задачу?';
+                    break;
+                case 'installation':
+                    message = 'Вы уверены, что хотите удалить этот монтаж?';
+                    break;
+                case 'pr':
+                    message = 'Вы уверены, что хотите удалить эту заявку?';
+                    break;
+                default:
+                    message = 'Вы уверены, что хотите удалить этот элемент?';
+            }
+            
+            if (confirm(message)) {
+                deleteItem(id, type);
+            }
+        }
+
+        async function deleteItem(id, type) {
+            try {
+                switch(type) {
+                    case 'task':
+                        await supabase.from('tasks').delete().eq('id', id);
+                        showToast('Задача удалена');
+                        renderTasks(document.getElementById('content'));
+                        break;
+                    case 'installation':
+                        await supabase.from('installations').delete().eq('id', id);
+                        showToast('Монтаж удален');
+                        renderInstallations(document.getElementById('content'));
+                        break;
+                    case 'pr':
+                        await supabase.from('purchase_request_items').delete().eq('purchase_request_id', id);
+                        await supabase.from('purchase_requests').delete().eq('id', id);
+                        showToast('Заявка удалена');
+                        renderPurchaseRequests(document.getElementById('content'));
+                        break;
+                }
+            } catch (error) {
+                showToast('Ошибка при удалении: ' + error.message);
+            }
+        }
+
+        // Modified render functions to add swipe support
+        const originalRenderTasks = renderTasks;
+        renderTasks = async function(content) {
+            await originalRenderTasks(content);
+            initSwipeHandlers();
+        };
+
+        const originalRenderInstallations = renderInstallations;
+        renderInstallations = async function(content) {
+            await originalRenderInstallations(content);
+            initSwipeHandlers();
+        };
+
+        const originalRenderPurchaseRequests = renderPurchaseRequests;
+        renderPurchaseRequests = async function(content) {
+            await originalRenderPurchaseRequests(content);
+            initSwipeHandlers();
+        };
 
         // ============================================================
         // INITIALIZATION
