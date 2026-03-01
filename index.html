@@ -2609,7 +2609,7 @@
             const isElevated = isElevatedUser();
             const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
             const canApprove = isElevated && pr.status === 'pending';
-            const canEdit = (isElevated || isOwner) && (pr.status === 'rejected' || pr.status === 'draft');
+            const canEdit = true;
 
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
 
