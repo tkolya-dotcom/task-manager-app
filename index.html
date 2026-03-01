@@ -1323,10 +1323,6 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- Supabase SDK -->
-    <!-- Matrix Rain Canvas -->
-    <canvas id="matrix-canvas" style="position: fixed; top: 0; left: 0; z-index: -1;"></canvas>
-
-    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script type="module">
@@ -2824,7 +2820,7 @@ const buttons = [
                 prs.forEach(pr => {
                     const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
                     html += `
-                        <div class="card card-clickable" onclick="showPRDetail('${pr.id}')">
+                        <div class="card card-clickable" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
@@ -2838,110 +2834,101 @@ const buttons = [
             content.innerHTML = html;
         }
 
-        async function showPRDetail(prId) {
-            const { data: pr } = await supabase
-                .from('purchase_requests')
-                .select('*')
-                .eq('id', prId)
-                .single();
-
+        // Show PR detail in modal - for managers
+        window.showPRDetailModal = async function(prId) {
+            const { data: pr } = await supabase.from('purchase_requests').select('*').eq('id', prId).single();
             if (!pr) return;
 
-            let creatorName = 'Unknown';
-            let approverName = null;
-            let taskTitle = null;
-            let installationTitle = null;
+            let creatorName = 'Unknown', approverName = null, taskTitle = null, installationTitle = null;
+            if (pr.created_by) { const { data } = await supabase.from('users').select('name').eq('id', pr.created_by).single(); creatorName = data?.name || 'Unknown'; }
+            if (pr.approved_by) { const { data } = await supabase.from('users').select('name').eq('id', pr.approved_by).single(); approverName = data?.name; }
+            if (pr.task_id) { const { data } = await supabase.from('tasks').select('title').eq('id', pr.task_id).single(); taskTitle = data?.title; }
+            if (pr.installation_id) { const { data } = await supabase.from('installations').select('title').eq('id', pr.installation_id).single(); installationTitle = data?.title; }
 
-            if (pr.created_by) {
-                const { data: creator } = await supabase
-                    .from('users')
-                    .select('name')
-                    .eq('id', pr.created_by)
-                    .single();
-                creatorName = creator?.name || 'Unknown';
-            }
-
-            if (pr.approved_by) {
-                const { data: approver } = await supabase
-                    .from('users')
-                    .select('name')
-                    .eq('id', pr.approved_by)
-                    .single();
-                approverName = approver?.name || null;
-            }
-
-            if (pr.task_id) {
-                const { data: task } = await supabase
-                    .from('tasks')
-                    .select('title')
-                    .eq('id', pr.task_id)
-                    .single();
-                taskTitle = task?.title || null;
-            }
-
-            if (pr.installation_id) {
-                const { data: installation } = await supabase
-                    .from('installations')
-                    .select('title')
-                    .eq('id', pr.installation_id)
-                    .single();
-                installationTitle = installation?.title || null;
-            }
-
-            const { data: items } = await supabase
-                .from('purchase_request_items')
-                .select('*')
-                .eq('purchase_request_id', prId);
-
+            const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
             const isElevated = isElevatedUser();
-            const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
             const canApprove = isElevated && pr.status === 'pending';
-            const canEdit = true;
-
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
 
-            let html = `
-                <button class="btn btn-outline btn-sm" onclick="navigate('purchaseRequests')" style="margin-bottom: 16px">← Назад</button>
-                <div class="detail-header">
-                    <div class="detail-title">Заявка #${prId.slice(0, 8)}</div>
-                    <div class="detail-meta">${itemType}</div>
-                    <div class="detail-meta">Статус: <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div>
-                    <div class="detail-meta">Создал: ${creatorName}</div>
-                    ${approverName ? `<div class="detail-meta">Подтвердил: ${approverName}</div>` : ''}
-                    ${pr.comment ? `<div class="detail-meta">Комментарий: ${pr.comment}</div>` : ''}
-                </div>
-            `;
-
+            let itemsHtml = '';
             if (items && items.length > 0) {
-                html += `<h3 class="section-title">Позиции</h3>`;
                 items.forEach(item => {
-                    html += `
-                        <div class="pr-item">
-                            <div>
-                                <div class="pr-item-name">${item.name}</div>
-                                ${item.note ? `<div style="font-size: 12px; color: var(--text-muted)">${item.note}</div>` : ''}
-                            </div>
-                            <div class="pr-item-qty">${item.quantity} ${item.unit}</div>
-                        </div>
-                    `;
+                    itemsHtml += `<div class="pr-item"><div><div class="pr-item-name">${item.name}</div>${item.note ? `<div style="font-size:12px;color:var(--text-muted)">${item.note}</div>` : ''}</div><div class="pr-item-qty">${item.quantity} ${item.unit}</div></div>`;
                 });
             }
 
+            let actionsHtml = '';
             if (canApprove) {
-                html += `
-                    <div class="actions">
-                        <button class="btn btn-success" onclick="approvePR('${pr.id}')">Одобрить</button>
-                        <button class="btn btn-danger" onclick="rejectPR('${pr.id}')">Отклонить</button>
-                    </div>
-                `;
+                actionsHtml = `<div class="actions"><button class="btn btn-success" onclick="approvePRModal('${pr.id}')">Одобрить</button><button class="btn btn-danger" onclick="rejectPRModal('${pr.id}')">Отклонить</button></div>`;
             }
+            actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
 
-            if (canEdit) {
-                html += `<button class="btn btn-warning" onclick="editPR('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
+        };
+
+        window.approvePRModal = async function(prId) {
+            showModal('Одобрение заявки', `<div class="form-group"><label>Комментарий (необязательно):</label><textarea id="approveCommentModal" rows="3" placeholder="Добавьте комментарий" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(10,10,15,0.8);color:var(--text);font-size:16px;resize:vertical;"></textarea></div><div class="actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-success" onclick="confirmApprovePRModal('${prId}')">Одобрить</button></div>`);
+        };
+
+        window.confirmApprovePRModal = async function(prId) {
+            const comment = document.getElementById('approveCommentModal').value;
+            try {
+                const { error } = await supabase.from('purchase_requests').update({ status: 'approved', approved_by: currentUserProfile?.id, comment: comment, updated_at: new Date().toISOString() }).eq('id', prId);
+                if (error) throw error;
+                closeModal();
+                showToast('Заявка одобрена');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.rejectPRModal = async function(prId) {
+            showModal('Причина отклонения', `<div class="form-group"><label>Укажите причину отклонения:</label><textarea id="rejectReasonModal" rows="4" placeholder="Например: Недостаточно средств" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(10,10,15,0.8);color:var(--text);font-size:16px;resize:vertical;"></textarea></div><div class="actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-danger" onclick="confirmRejectPRModal('${prId}')">Отклонить</button></div>`);
+        };
+
+        window.confirmRejectPRModal = async function(prId) {
+            const comment = document.getElementById('rejectReasonModal').value;
+            if (!comment || comment.trim() === '') { showToast('Укажите причину отклонения'); return; }
+            try {
+                const { error } = await supabase.from('purchase_requests').update({ status: 'rejected', comment: comment, updated_at: new Date().toISOString() }).eq('id', prId);
+                if (error) throw error;
+                closeModal();
+                showToast('Заявка отклонена');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.editPRModal = async function(prId) {
+            const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
+            const { data: materials } = await supabase.from('materials').select('*').order('category').order('name');
+            const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+            let itemsHtml = '';
+            if (items && items.length > 0) {
+                items.forEach((item, index) => {
+                    const num = index + 1;
+                    itemsHtml += `<div id="editPrItem${num}"><div class="form-group"><label>Позиция ${num}</label><select id="editItem${num}Material" onchange="handleEditMaterialSelect(${num})"><option value="">-- Выберите --</option>${materialOptions}</select></div><div class="form-group"><label>Название</label><input id="editItem${num}Name" type="text" value="${item.name || ''}"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Кол-во</label><input id="editItem${num}Qty" type="number" value="${item.quantity || 1}"></div><div class="form-group" style="flex:1"><label>Ед.</label><select id="editItem${num}Unit"><option value="pcs" ${item.unit==='pcs'?'selected':''}>шт</option><option value="m" ${item.unit==='m'?'selected':''}>м</option><option value="m2" ${item.unit==='m2'?'selected':''}>м2</option></select></div></div><div class="form-group"><label>Прим.</label><input id="editItem${num}Note" type="text" value="${item.note || ''}"></div></div>`;
+                });
             }
+            showModal('Редактировать заявку', `<div id="editPrItems">${itemsHtml}</div><button class="btn btn-outline" onclick="addEditPRItem()" style="margin-bottom:12px">+ Добавить позицию</button><button class="btn" onclick="saveEditedPRModal('${prId}')">Отправить на рассмотрение</button>`);
+        };
 
-            document.getElementById('content').innerHTML = html;
-        }
+        window.saveEditedPRModal = async function(prId) {
+            const items = [];
+            let i = 1;
+            while (document.getElementById('editItem' + i + 'Name')) {
+                const name = document.getElementById('editItem' + i + 'Name').value;
+                if (name) items.push({ name, quantity: parseFloat(document.getElementById('editItem' + i + 'Qty').value) || 1, unit: document.getElementById('editItem' + i + 'Unit').value, note: document.getElementById('editItem' + i + 'Note').value });
+                i++;
+            }
+            if (items.length === 0) { showToast('Добавьте хотя бы одну позицию'); return; }
+            try {
+                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
+                await supabase.from('purchase_request_items').insert(items.map(item => ({ purchase_request_id: prId, ...item })));
+                await supabase.from('purchase_requests').update({ status: 'pending', comment: null, updated_at: new Date().toISOString() }).eq('id', prId);
+                closeModal();
+                showToast('Заявка отправлена на рассмотрение');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
 
         window.editPR = async function(prId) {
             const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
@@ -3955,7 +3942,6 @@ const buttons = [
         // ============================================================
         // Start the app
         initApp();
-        matrixRain();
     </script>
 </body>
 </html>
