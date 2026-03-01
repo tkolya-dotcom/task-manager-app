@@ -1894,6 +1894,7 @@ const buttons = [
             }
             
             content.innerHTML = html;
+            initSwipeHandlers();
         }
         
         // ============================================================
@@ -2873,7 +2874,7 @@ const buttons = [
                 prs.forEach(pr => {
                     const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
                     html += `
-                        <div class="card card-clickable" onclick="showPRDetailModal('${pr.id}')">
+                        <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
