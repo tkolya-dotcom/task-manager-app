@@ -2153,7 +2153,7 @@ const buttons = [
             const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id));
 
             return `
-                <div class="card card-clickable" onclick="showTaskDetail('${task.id}')">
+                <div class="card card-clickable" data-id="${task.id}" data-type="task" onclick="showTaskDetail('${task.id}')">
                     <div class="list-item-header">
                         <div class="list-item-title">${task.title}</div>
                         <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
@@ -2408,7 +2408,7 @@ const buttons = [
 
             const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован';
             return `
-                <div class="card card-clickable" onclick="window.showInstallationDetail('${inst.id}')">
+                <div class="card card-clickable" data-id="${inst.id}" data-type="installation" onclick="window.showInstallationDetail('${inst.id}')">
                     <div class="list-item-header">
                         <div class="list-item-title">${inst.title}</div>
                         <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
