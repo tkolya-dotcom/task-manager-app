@@ -1751,25 +1751,253 @@ const buttons = [
                 'postponed': '#8892a0'
             };
 
+            // Get recent PRs for quick view
+            const recentPRs = prs.slice(0, 5);
+
             html += `
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="navigate('projects')">
                         <div class="stat-value">${projects.length}</div>
                         <div class="stat-label">Проектов</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="navigate('tasks')">
                         <div class="stat-value">${tasks.length}</div>
                         <div class="stat-label">Задач</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" onclick="navigate('installations')">
                         <div class="stat-value">${installations.length}</div>
                         <div class="stat-label">Монтажей</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" style="cursor: pointer;" onclick="showDashboardPRModal()">
                         <div class="stat-value">${prs.length}</div>
                         <div class="stat-label">Заявок</div>
                     </div>
                 </div>
+
+                <!-- Dashboard PR Quick View Modal -->
+                <div id="dashboardPRModal" class="modal hidden" onclick="closeDashboardPRModal(event)">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>Заявки на материалы</h3>
+                            <button class="modal-close" onclick="closeDashboardPRModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            ${prs.length === 0 ? '<div class="empty-state"><p>Нет заявок</p></div>' : prs.map(pr => {
+                                const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
+                                return `
+                                    <div class="card card-clickable" onclick="showPRDetailInModal('${pr.id}')">
+                                        <div class="list-item-header">
+                                            <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
+                                            <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
+                                        </div>
+                                        <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PR Detail Modal -->
+                <div id="prDetailModal" class="modal hidden" onclick="closePRDetailModal(event)">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3 id="prDetailTitle">Заявка</h3>
+                            <button class="modal-close" onclick="closePRDetailModal()">&times;</button>
+                        </div>
+                        <div id="prDetailBody" class="modal-body">
+                            <!-- PR detail content will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    function showDashboardPRModal() {
+                        document.getElementById('dashboardPRModal').classList.remove('hidden');
+                    }
+                    function closeDashboardPRModal(event) {
+                        if (!event || event.target.id === 'dashboardPRModal') {
+                            document.getElementById('dashboardPRModal').classList.add('hidden');
+                        }
+                    }
+                    
+                    // Show PR Detail in Modal instead of main content
+                    window.showPRDetailInModal = async function(prId) {
+                        const { data: pr } = await supabase
+                            .from('purchase_requests')
+                            .select('*')
+                            .eq('id', prId)
+                            .single();
+
+                        if (!pr) return;
+
+                        let creatorName = 'Unknown';
+                        let approverName = null;
+                        let taskTitle = null;
+                        let installationTitle = null;
+
+                        if (pr.created_by) {
+                            const { data: creator } = await supabase
+                                .from('users')
+                                .select('name')
+                                .eq('id', pr.created_by)
+                                .single();
+                            creatorName = creator?.name || 'Unknown';
+                        }
+
+                        if (pr.approved_by) {
+                            const { data: approver } = await supabase
+                                .from('users')
+                                .select('name')
+                                .eq('id', pr.approved_by)
+                                .single();
+                            approverName = approver?.name || null;
+                        }
+
+                        if (pr.task_id) {
+                            const { data: task } = await supabase
+                                .from('tasks')
+                                .select('title')
+                                .eq('id', pr.task_id)
+                                .single();
+                            taskTitle = task?.title || null;
+                        }
+
+                        if (pr.installation_id) {
+                            const { data: installation } = await supabase
+                                .from('installations')
+                                .select('title')
+                                .eq('id', pr.installation_id)
+                                .single();
+                            installationTitle = installation?.title || null;
+                        }
+
+                        const { data: items } = await supabase
+                            .from('purchase_request_items')
+                            .select('*')
+                            .eq('purchase_request_id', prId);
+
+                        const isElevated = isElevatedUser();
+                        const canApprove = isElevated && pr.status === 'pending';
+                        const canEdit = true;
+
+                        const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
+
+                        let html = `
+                            <div class="detail-header">
+                                <div class="detail-title">Заявка #${prId.slice(0, 8)}</div>
+                                <div class="detail-meta">${itemType}</div>
+                                <div class="detail-meta">Статус: <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div>
+                                <div class="detail-meta">Создал: ${creatorName}</div>
+                                ${approverName ? `<div class="detail-meta">Подтвердил: ${approverName}</div>` : ''}
+                                ${pr.comment ? `<div class="detail-meta">Комментарий: ${pr.comment}</div>` : ''}
+                            </div>
+                        `;
+
+                        if (items && items.length > 0) {
+                            html += `<h3 class="section-title">Позиции</h3>`;
+                            items.forEach(item => {
+                                html += `
+                                    <div class="pr-item">
+                                        <div>
+                                            <div class="pr-item-name">${item.name}</div>
+                                            ${item.note ? `<div style="font-size: 12px; color: var(--text-muted)">${item.note}</div>` : ''}
+                                        </div>
+                                        <div class="pr-item-qty">${item.quantity} ${item.unit}</div>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        if (canApprove) {
+                            html += `
+                                <div class="actions">
+                                    <button class="btn btn-success" onclick="approvePRFromModal('${pr.id}')">Одобрить</button>
+                                    <button class="btn btn-danger" onclick="rejectPRFromModal('${pr.id}')">Отклонить</button>
+                                </div>
+                            `;
+                        }
+
+                        if (canEdit) {
+                            html += `<button class="btn btn-warning" onclick="editPRFromModal('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+                        }
+
+                        document.getElementById('prDetailTitle').textContent = 'Заявка #' + prId.slice(0, 8);
+                        document.getElementById('prDetailBody').innerHTML = html;
+                        document.getElementById('prDetailModal').classList.remove('hidden');
+                    };
+                    
+                    window.closePRDetailModal = function(event) {
+                        if (!event || event.target.id === 'prDetailModal') {
+                            document.getElementById('prDetailModal').classList.add('hidden');
+                        }
+                    };
+
+                    // Approve PR from modal
+                    window.approvePRFromModal = async function(prId) {
+                        const comment = prompt('Комментарий (необязательно):') || '';
+
+                        try {
+                            const { error } = await supabase
+                                .from('purchase_requests')
+                                .update({
+                                    status: 'approved',
+                                    approved_by: currentUserProfile?.id,
+                                    comment: comment,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', prId);
+
+                            if (error) throw error;
+
+                            showToast('Заявка одобрена');
+                            showPRDetailInModal(prId);
+                        } catch (error) {
+                            showToast('Ошибка: ' + error.message);
+                        }
+                    };
+
+                    // Reject PR from modal
+                    window.rejectPRFromModal = async function(prId) {
+                        const comment = prompt('Причина отказа:') || '';
+
+                        try {
+                            const { error } = await supabase
+                                .from('purchase_requests')
+                                .update({
+                                    status: 'rejected',
+                                    comment: comment,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', prId);
+
+                            if (error) throw error;
+
+                            showToast('Заявка отклонена');
+                            showPRDetailInModal(prId);
+                        } catch (error) {
+                            showToast('Ошибка: ' + error.message);
+                        }
+                    };
+
+                    // Edit PR from modal
+                    window.editPRFromModal = async function(prId) {
+                        const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
+                        const { data: materials } = await supabase.from('materials').select('*').order('category').order('name');
+                        const materialOptions = materials?.map(m => `<option value="${m.id}" data-name="${m.name}" data-unit="${m.default_unit}">${m.name} (${m.category})</option>`).join('') || '';
+                        let itemsHtml = '';
+                        if (items && items.length > 0) {
+                            items.forEach((item, index) => {
+                                const num = index + 1;
+                                itemsHtml += `<div id="editPrItem${num}"><div class="form-group"><label>Позиция ${num} - Материал</label><select id="editItem${num}Material" onchange="handleEditMaterialSelect(${num})"><option value="">-- Выберите материал --</option>${materialOptions}</select></div><div class="form-group"><label>Название (если свое)</label><input id="editItem${num}Name" type="text" value="${item.name || ''}"></div><div style="display:flex;gap:8px"><div class="form-group" style="flex:1"><label>Количество</label><input id="editItem${num}Qty" type="number" value="${item.quantity || 1}"></div><div class="form-group" style="flex:1"><label>Единица</label><select id="editItem${num}Unit"><option value="pcs" ${item.unit==='pcs'?'selected':''}>шт</option><option value="m" ${item.unit==='m'?'selected':''}>м</option><option value="m2" ${item.unit==='m2'?'selected':''}>м2</option><option value="m3" ${item.unit==='m3'?'selected':''}>м3</option><option value="l" ${item.unit==='l'?'selected':''}>л</option><option value="kg" ${item.unit==='kg'?'selected':''}>кг</option></select></div></div><div class="form-group"><label>Примечание</label><input id="editItem${num}Note" type="text" value="${item.note || ''}"></div></div>`;
+                            });
+                        }
+                        
+                        // Close PR detail modal and open edit modal
+                        closePRDetailModal();
+                        showModal('Редактировать заявку', `<div id="editPrItems">${itemsHtml}</div><button class="btn btn-outline" onclick="addEditPRItem()" style="margin-bottom:12px">+ Добавить позицию</button><button class="btn" onclick="saveEditedPR('${prId}')">Отправить на рассмотрение</button>`);
+                    };
+                </script>
 
                 <!-- Progress Bar -->
                 <div class="card">
