@@ -4114,12 +4114,14 @@ const buttons = [
 
             function draw() {
                 // Black background with slight transparency for trail effect
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.01)';
+ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Green text
-                ctx.fillStyle = '#00FF88';
+                // Ghostly Matrix letters with glow effect
+                ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
                 ctx.font = fontSize + 'px monospace';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = 'rgba(0, 255, 136, 0.3)';
 
                 // Loop over drops
                 for (let i = 0; i < drops.length; i++) {
