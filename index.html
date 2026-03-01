@@ -1717,6 +1717,40 @@ const buttons = [
                 getPurchaseRequests()
             ]);
             
+            // Calculate progress
+            const totalItems = tasks.length + installations.length;
+            const completedTasks = tasks.filter(t => t.status === 'done').length;
+            const completedInstallations = installations.filter(i => i.status === 'done').length;
+            const completedItems = completedTasks + completedInstallations;
+            const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+            // Calculate task status breakdown
+            const taskStatusCounts = { new: 0, planned: 0, in_progress: 0, waiting_materials: 0, done: 0, postponed: 0 };
+            tasks.forEach(t => { if (taskStatusCounts.hasOwnProperty(t.status)) taskStatusCounts[t.status]++; });
+
+            // Calculate installation status breakdown
+            const instStatusCounts = { new: 0, planned: 0, in_progress: 0, waiting_materials: 0, done: 0, postponed: 0 };
+            installations.forEach(i => { if (instStatusCounts.hasOwnProperty(i.status)) instStatusCounts[i.status]++; });
+
+            const getStatusLabel = (status) => {
+                const labels = { 'new': 'Новая', 'planned': 'Запланирована', 'in_progress': 'В работе', 'waiting_materials': 'Ожидает материалов', 'done': 'Выполнена', 'postponed': 'Отложена' };
+                return labels[status] || status;
+            };
+
+            const getInstStatusLabel = (status) => {
+                const labels = { 'new': 'Новый', 'planned': 'Запланирован', 'in_progress': 'В работе', 'waiting_materials': 'Ожидает материалов', 'done': 'Завершён', 'postponed': 'Отложен' };
+                return labels[status] || status;
+            };
+
+            const statusColors = {
+                'new': '#3399ff',
+                'planned': '#FF6B00',
+                'in_progress': '#00D9FF',
+                'waiting_materials': '#ff00cc',
+                'done': '#00FF88',
+                'postponed': '#8892a0'
+            };
+
             html += `
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -1735,6 +1769,52 @@ const buttons = [
                         <div class="stat-value">${prs.length}</div>
                         <div class="stat-label">Заявок</div>
                     </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="card">
+                    <h3 class="section-title">Общее выполнение</h3>
+                    <div style="background: var(--secondary); height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 10px;">
+                        <div style="background: linear-gradient(90deg, var(--success), #66bb6a); height: 100%; width: ${progressPercent}%; transition: width 0.3s ease; border-radius: 12px;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 14px;">
+                        <span>${progressPercent}% выполнено</span>
+                        <span>${completedItems} из ${totalItems} завершено</span>
+                    </div>
+                </div>
+
+                <!-- Task Status Breakdown -->
+                <div class="card">
+                    <h3 class="section-title">Статусы задач</h3>
+                    ${Object.entries(taskStatusCounts).map(([status, count]) => {
+                        const width = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
+                        return `
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                <span style="min-width: 140px; font-size: 13px;">${getStatusLabel(status)}</span>
+                                <div style="flex: 1; height: 20px; background: var(--secondary); border-radius: 10px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${width}%; background: ${statusColors[status]}; border-radius: 10px; transition: width 0.3s ease;"></div>
+                                </div>
+                                <span style="min-width: 30px; text-align: right; font-weight: 500;">${count}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <!-- Installation Status Breakdown -->
+                <div class="card">
+                    <h3 class="section-title">Статусы монтажей</h3>
+                    ${Object.entries(instStatusCounts).map(([status, count]) => {
+                        const width = installations.length > 0 ? (count / installations.length) * 100 : 0;
+                        return `
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                <span style="min-width: 140px; font-size: 13px;">${getInstStatusLabel(status)}</span>
+                                <div style="flex: 1; height: 20px; background: var(--secondary); border-radius: 10px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${width}%; background: ${statusColors[status]}; border-radius: 10px; transition: width 0.3s ease;"></div>
+                                </div>
+                                <span style="min-width: 30px; text-align: right; font-weight: 500;">${count}</span>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             `;
             
