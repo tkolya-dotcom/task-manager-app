@@ -2153,6 +2153,13 @@ const buttons = [
             const isWorker = currentUserProfile?.role === 'worker';
             const canEdit = isManager || (isWorker && String(task.assignee_id) === String(currentUserProfile?.id));
 
+            // Get first line of description or truncate
+            let descriptionHtml = '';
+            if (task.description && task.description.trim() !== '') {
+                const shortDesc = task.description.length > 50 ? task.description.substring(0, 50) + '...' : task.description;
+                descriptionHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.3;">${shortDesc}</div>`;
+            }
+
             return `
                 <div class="card card-clickable" data-id="${task.id}" data-type="task" onclick="showTaskDetail('${task.id}')">
                     <div class="list-item-header">
@@ -2163,6 +2170,7 @@ const buttons = [
                         ${showProject && task.projects ? task.projects.name + ' - ' : ''}
                         ${task.users?.name || 'Не назначен'}
                     </div>
+                    ${descriptionHtml}
                     ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button></div>` : ''}
                 </div>
             `;
@@ -2407,6 +2415,13 @@ const buttons = [
             const isWorker = currentUserProfile?.role === 'worker';
             const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
 
+            // Get first line of description or truncate
+            let descriptionHtml = '';
+            if (inst.description && inst.description.trim() !== '') {
+                const shortDesc = inst.description.length > 50 ? inst.description.substring(0, 50) + '...' : inst.description;
+                descriptionHtml = `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.3;">${shortDesc}</div>`;
+            }
+
             const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleDateString('ru-RU') : 'Не запланирован';
             return `
                 <div class="card card-clickable" data-id="${inst.id}" data-type="installation" onclick="window.showInstallationDetail('${inst.id}')">
@@ -2418,6 +2433,7 @@ const buttons = [
                         ${showProject && inst.projects ? inst.projects.name + ' - ' : ''}
                         ${inst.address || ''} - ${date}
                     </div>
+                    ${descriptionHtml}
                     ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editInstallation('${inst.id}')">✎</button></div>` : ''}
                 </div>
             `;
@@ -4106,13 +4122,25 @@ const buttons = [
             const touchEndX = e.changedTouches[0].clientX;
             const diffX = touchEndX - touchStartX;
             
+            const itemId = currentSwipeItem.getAttribute('data-id');
+            const itemType = currentSwipeItem.getAttribute('data-type');
+            
             // If swiped left more than 100px, show delete confirmation
             if (diffX < -100) {
-                const itemId = currentSwipeItem.getAttribute('data-id');
-                const itemType = currentSwipeItem.getAttribute('data-type');
-                
                 if (itemId && itemType) {
                     showDeleteConfirmation(itemId, itemType);
+                }
+            }
+            // If swiped right more than 100px, open detail
+            else if (diffX > 100) {
+                if (itemId && itemType) {
+                    if (itemType === 'task') {
+                        showTaskDetail(itemId);
+                    } else if (itemType === 'installation') {
+                        window.showInstallationDetail(itemId);
+                    } else if (itemType === 'pr') {
+                        showPRDetailModal(itemId);
+                    }
                 }
             }
             
@@ -4146,6 +4174,7 @@ const buttons = [
         }
 
         async function deleteItem(id, type) {
+            const token = localStorage.getItem('token');
             try {
                 switch(type) {
                     case 'task':
@@ -4166,6 +4195,7 @@ const buttons = [
                         break;
                 }
             } catch (error) {
+                console.error('Delete error:', error);
                 showToast('Ошибка при удалении: ' + error.message);
             }
         }
