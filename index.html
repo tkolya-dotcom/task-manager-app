@@ -2887,18 +2887,40 @@ const buttons = [
             content.innerHTML = html;
         }
 
-        // Show PR detail in modal - for managers
+        // Show PR detail in modal - for managers (optimized)
         window.showPRDetailModal = async function(prId) {
-            const { data: pr } = await supabase.from('purchase_requests').select('*').eq('id', prId).single();
-            if (!pr) return;
-
-            let creatorName = 'Unknown', approverName = null, taskTitle = null, installationTitle = null;
-            if (pr.created_by) { const { data } = await supabase.from('users').select('name').eq('id', pr.created_by).single(); creatorName = data?.name || 'Unknown'; }
-            if (pr.approved_by) { const { data } = await supabase.from('users').select('name').eq('id', pr.approved_by).single(); approverName = data?.name; }
-            if (pr.task_id) { const { data } = await supabase.from('tasks').select('title').eq('id', pr.task_id).single(); taskTitle = data?.title; }
-            if (pr.installation_id) { const { data } = await supabase.from('installations').select('title').eq('id', pr.installation_id).single(); installationTitle = data?.title; }
-
-            const { data: items } = await supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId);
+            // Show loading immediately
+            showModal('Загрузка...', '<div class="loading"><div class="loading-spinner"></div></div>');
+            
+            // Fetch PR and items in parallel
+            const [prResult, itemsResult] = await Promise.all([
+                supabase.from('purchase_requests').select('*').eq('id', prId).single(),
+                supabase.from('purchase_request_items').select('*').eq('purchase_request_id', prId)
+            ]);
+            
+            const pr = prResult.data;
+            if (!pr) { closeModal(); return; }
+            const items = itemsResult.data || [];
+            
+            // Collect IDs for batch query
+            const userIds = [pr.created_by, pr.approved_by].filter(Boolean);
+            
+            // Batch fetch related data in parallel
+            const [usersResult, tasksResult, installationsResult] = await Promise.all([
+                userIds.length > 0 ? supabase.from('users').select('id, name').in('id', userIds) : Promise.resolve({ data: [] }),
+                pr.task_id ? supabase.from('tasks').select('id, title').eq('id', pr.task_id).single() : Promise.resolve({ data: null }),
+                pr.installation_id ? supabase.from('installations').select('id, title').eq('id', pr.installation_id).single() : Promise.resolve({ data: null })
+            ]);
+            
+            // Build lookup
+            const usersMap = {};
+            (usersResult.data || []).forEach(u => usersMap[u.id] = u);
+            
+            const creatorName = usersMap[pr.created_by]?.name || 'Unknown';
+            const approverName = usersMap[pr.approved_by]?.name || null;
+            const taskTitle = tasksResult.data?.title || null;
+            const installationTitle = installationsResult.data?.title || null;
+            
             const isElevated = isElevatedUser();
             const canApprove = isElevated && pr.status === 'pending';
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
