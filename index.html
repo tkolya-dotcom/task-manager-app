@@ -2936,7 +2936,17 @@ const buttons = [
             if (canApprove) {
                 actionsHtml = `<div class="actions"><button class="btn btn-success" onclick="approvePRModal('${pr.id}')">Одобрить</button><button class="btn btn-danger" onclick="rejectPRModal('${pr.id}')">Отклонить</button></div>`;
             }
-            actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button><button class="btn btn-danger" style="margin-top:8px" onclick="deletePRModal('${pr.id}')">Удалить заявку</button>`;
+            
+            // Show edit button only for the creator of the request
+            const isCreator = pr.created_by === currentUserProfile?.id;
+            if (isCreator && (pr.status === 'pending' || pr.status === 'rejected' || pr.status === 'draft')) {
+                actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
+            }
+            
+            // Show delete button only for managers
+            if (isElevated) {
+                actionsHtml += `<button class="btn btn-danger" style="margin-top:8px" onclick="deletePRModal('${pr.id}')">Удалить заявку</button>`;
+            }
 
             showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
         };
@@ -2969,6 +2979,22 @@ const buttons = [
                 closeModal();
                 showToast('Заявка отклонена');
                 showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.deletePRModal = async function(prId) {
+            if (!confirm('Вы уверены, что хотите удалить эту заявку?')) {
+                return;
+            }
+            try {
+                // Delete items first
+                await supabase.from('purchase_request_items').delete().eq('purchase_request_id', prId);
+                // Then delete the request
+                const { error } = await supabase.from('purchase_requests').delete().eq('id', prId);
+                if (error) throw error;
+                closeModal();
+                showToast('Заявка удалена');
+                renderPurchaseRequests(document.getElementById('content'));
             } catch (error) { showToast('Ошибка: ' + error.message); }
         };
 
@@ -4053,9 +4079,19 @@ const buttons = [
                     // Swipe left - show delete action
                     currentSwipeItem.style.transform = `translateX(${diffX}px)`;
                     
-                    // Add visual feedback
+                    // Add visual feedback for delete (red)
                     if (diffX < -100) {
                         currentSwipeItem.style.background = 'rgba(255, 51, 102, 0.2)';
+                    } else {
+                        currentSwipeItem.style.background = '';
+                    }
+                } else if (diffX > 0) {
+                    // Swipe right - show description action (cyan glow)
+                    currentSwipeItem.style.transform = `translateX(${diffX}px)`;
+                    
+                    // Add visual feedback for description (cyan)
+                    if (diffX > 100) {
+                        currentSwipeItem.style.background = 'rgba(0, 217, 255, 0.2)';
                     } else {
                         currentSwipeItem.style.background = '';
                     }
