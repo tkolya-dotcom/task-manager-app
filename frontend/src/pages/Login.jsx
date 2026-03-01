@@ -16,14 +16,20 @@ const Login = () => {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
     setLoading(true);
 
+    console.log('Login button clicked, email:', email);
+    console.log('API URL:', import.meta.env.VITE_API_URL || '/api');
+
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      console.log('Login successful:', result);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      console.error('Login error:', err);
+      setError(err.message || 'Ошибка входа. Проверьте консоль для деталей.');
     } finally {
       setLoading(false);
     }
@@ -31,9 +37,12 @@ const Login = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
     setSuccess('');
     setLoading(true);
+
+    console.log('Register button clicked, email:', email, 'name:', name, 'role:', role);
 
     // Validate password length
     if (password.length < 6) {
@@ -43,13 +52,15 @@ const Login = () => {
     }
 
     try {
-      await register(email, password, name, role);
+      const result = await register(email, password, name, role);
+      console.log('Registration successful:', result);
       setSuccess('Регистрация успешна! Перенаправление...');
       setTimeout(() => {
         navigate('/');
       }, 1500);
     } catch (err) {
-      setError(err.message);
+      console.error('Registration error:', err);
+      setError(err.message || 'Ошибка регистрации. Проверьте консоль для деталей.');
     } finally {
       setLoading(false);
     }

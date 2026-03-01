@@ -355,3 +355,76 @@ body {
 
 .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); }
 .empty-state h3 { margin-bottom: 10px; }
+
+/* Progress Bar Styles */
+.progress-container {
+  padding: 10px 0;
+}
+
+.progress-bar {
+  height: 24px;
+  background-color: #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--success-color), #66bb6a);
+  border-radius: 12px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Status Breakdown Styles */
+.status-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-item .status-badge {
+  min-width: 140px;
+  text-align: center;
+}
+
+.status-bar-container {
+  flex: 1;
+  height: 20px;
+  background-color: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.status-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.status-bar.status-new { background-color: #1976d2; }
+.status-bar.status-planned { background-color: #f57c00; }
+.status-bar.status-in_progress { background-color: #388e3c; }
+.status-bar.status-waiting_materials { background-color: #c2185b; }
+.status-bar.status-done { background-color: #2e7d32; }
+.status-bar.status-postponed { background-color: #757575; }
+
+.status-count {
+  min-width: 30px;
+  text-align: right;
+  font-weight: 500;
+  color: var(--text-primary);
+}

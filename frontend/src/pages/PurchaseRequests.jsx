@@ -285,7 +285,7 @@ const PurchaseRequests = () => {
                             Управление items ({request.items?.length || 0})
                           </button>
                         )}
-                        {((isManager || (isWorker && request.creator?.id === user?.id)) && request.status === 'draft') && (
+                        {((isManager || (isWorker && request.creator?.id === user?.id)) && (request.status === 'draft' || request.status === 'rejected')) && (
                           <button
                             className="btn btn-secondary"
                             onClick={() => openEditModal(request)}
