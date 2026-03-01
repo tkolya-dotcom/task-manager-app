@@ -2136,11 +2136,20 @@
                 <button class="btn btn-outline btn-sm" onclick="navigate('tasks')" style="margin-bottom: 16px">← Назад</button>
                 <div class="detail-header">
                     <div class="detail-title">${task.title}</div>
-                    <div class="detail-meta">${task.description || ''}</div>
                     <div class="detail-meta">Проект: ${task.projects?.name || '-'}</div>
                     <div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div>
                 </div>
             `;
+            
+            // Показываем описание в отдельном блоке
+            if (task.description && task.description.trim() !== '') {
+                html += `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <h3 class="section-title">Описание</h3>
+                        <p style="margin: 0; color: var(--text); line-height: 1.6; white-space: pre-wrap;">${task.description}</p>
+                    </div>
+                `;
+            }
             
             if (canEdit) {
                 html += `
@@ -2385,13 +2394,22 @@
                 <button class="btn btn-outline btn-sm" onclick="navigate('installations')" style="margin-bottom: 16px">← Назад</button>
                 <div class="detail-header">
                     <div class="detail-title">${inst.title}</div>
-                    <div class="detail-meta">${inst.description || ''}</div>
                     <div class="detail-meta">Проект: ${projectName}</div>
                     <div class="detail-meta">Адрес: ${inst.address || '-'}</div>
                     <div class="detail-meta">Дата: ${date}</div>
                     <div class="detail-meta">Исполнитель: ${assigneeName}</div>
                 </div>
             `;
+
+            // Показываем описание в отдельном блоке
+            if (inst.description && inst.description.trim() !== '') {
+                html += `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <h3 class="section-title">Описание</h3>
+                        <p style="margin: 0; color: var(--text); line-height: 1.6; white-space: pre-wrap;">${inst.description}</p>
+                    </div>
+                `;
+            }
 
             if (canEdit) {
                 html += `
@@ -2588,10 +2606,10 @@
                 .select('*')
                 .eq('purchase_request_id', prId);
 
-            const isManager = currentUserProfile?.role === 'manager';
+            const isElevated = isElevatedUser();
             const isOwner = String(pr.created_by) === String(currentUserProfile?.id);
-            const canApprove = isManager && pr.status === 'pending';
-            const canEdit = isOwner && (pr.status === 'rejected' || pr.status === 'draft');
+            const canApprove = isElevated && pr.status === 'pending';
+            const canEdit = (isElevated || isOwner) && (pr.status === 'rejected' || pr.status === 'draft');
 
             const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
 
@@ -3028,8 +3046,8 @@
                             <input type="text" id="instTitle" placeholder="Название монтажа">
                         </div>
                         <div class="form-group">
-                            <labellabel>
-                            <>Описание</textarea id="instDescription" placeholder="Описание монтажа"></textarea>
+                            <label>Описание</label>
+                            <textarea id="instDescription" placeholder="Описание монтажа"></textarea>
                         </div>
                         <div class="form-group">
                             <label>Проект</label>
