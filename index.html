@@ -2632,7 +2632,7 @@ const buttons = [
 
                 closeModal();
                 showToast('Задача обновлена');
-                showTaskDetail(taskId);
+                renderTasks(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
@@ -2741,7 +2741,7 @@ const buttons = [
 
                 closeModal();
                 showToast('Монтаж обновлен');
-                showInstallationDetail(instId);
+                renderInstallations(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
