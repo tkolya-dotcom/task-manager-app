@@ -1,4 +1,4 @@
-ы<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -1649,13 +1649,12 @@
             const nav = document.getElementById('nav');
             const isManager = isElevatedUser();
 
-            const buttons = [
+const buttons = [
                 { id: 'dashboard', label: 'Главная', icon: '⌂' },
                 { id: 'projects', label: 'Проекты', icon: '▣' },
                 { id: 'tasks', label: 'Задачи', icon: '☰' },
                 { id: 'installations', label: 'Монтажи', icon: '⚙' },
-                { id: 'calendar', label: 'Календарь', icon: '▦' },
-                { id: 'scheme', label: 'Схема', icon: '◫' }
+                { id: 'calendar', label: 'Календарь', icon: '▦' }
             ];
 
             // Show "Заявки" tab for all users
@@ -1692,9 +1691,6 @@
                         break;
                     case 'calendar':
                         await renderCalendar(content);
-                        break;
-                    case 'scheme':
-                        await renderScheme(content);
                         break;
                     default:
                         await renderDashboard(content);
