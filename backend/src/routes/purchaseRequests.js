@@ -169,24 +169,33 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Update purchase request status (approve/reject - manager only)
+// Update purchase request status (approve/reject/ready for pickup - manager only)
 router.put('/:id/status', authenticateToken, requireManager, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, comment } = req.body;
+    const { status, comment, pickup_address } = req.body;
 
-    if (!status || !['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Status must be approved or rejected' });
+    const validStatuses = ['approved', 'rejected', 'ordered', 'ready_for_pickup', 'completed'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
     }
+
+    // For ready_for_pickup status, pickup_address is required
+    if (status === 'ready_for_pickup' && !pickup_address) {
+      return res.status(400).json({ error: 'Pickup address is required for ready_for_pickup status' });
+    }
+
+    const updateData = { 
+      status, 
+      approved_by: req.user.id,
+      comment: comment || null,
+      pickup_address: pickup_address || null,
+      updated_at: new Date().toISOString()
+    };
 
     const { data: purchaseRequest, error } = await supabase
       .from('purchase_requests')
-      .update({ 
-        status, 
-        approved_by: req.user.id,
-        comment: comment || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

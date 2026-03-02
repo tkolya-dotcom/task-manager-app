@@ -90,7 +90,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, requireManager, async (req, res) => {
   try {
     console.log('Creating installation, user role:', req.user.role);
-    const { project_id, title, description, assignee_id, status = 'new', scheduled_at, address } = req.body;
+    const { project_id, title, description, assignee_id, status = 'new', scheduled_at, address, receipt_address, received_at } = req.body;
 
     if (!project_id || !title) {
       return res.status(400).json({ error: 'Project ID and title are required' });
@@ -105,7 +105,9 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
         assignee_id, 
         status,
         scheduled_at,
-        address
+        address,
+        receipt_address,
+        received_at
       }])
       .select()
       .single();
@@ -127,7 +129,7 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, assignee_id, status, scheduled_at, address } = req.body;
+    const { title, description, assignee_id, status, scheduled_at, address, receipt_address, received_at } = req.body;
 
     // Check if installation exists
     const { data: existingInstallation } = await supabase
@@ -154,6 +156,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         status,
         scheduled_at,
         address,
+        receipt_address,
+        received_at,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
