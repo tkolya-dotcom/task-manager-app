@@ -2550,7 +2550,7 @@ const buttons = [
             const isWorker = currentUserProfile?.role === 'worker';
             const canEdit = isManager || (isWorker && String(inst.assignee_id) === String(currentUserProfile?.id));
 
-            let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
+            let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'in_order', 'ready_for_receipt', 'received', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${inst.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
 
             const date = inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleString('ru-RU') : 'Не запланирован';
@@ -2842,9 +2842,10 @@ const buttons = [
             const userId = currentUserProfile?.id;
             const isManager = isElevatedUser();
 
+            // Simple query - just get PRs without heavy joins
             let query = supabase
                 .from('purchase_requests')
-                .select('*')
+                .select('id, status, created_at, task_id, installation_id, created_by, comment, receipt_address, received_at')
                 .order('created_at', { ascending: false });
 
             if (!isManager) {
@@ -2854,62 +2855,45 @@ const buttons = [
             const { data, error } = await query;
             if (error) throw error;
 
-            const prIds = data?.map(pr => pr.id) || [];
-            const taskIds = data?.map(pr => pr.task_id).filter(Boolean) || [];
-            const installationIds = data?.map(pr => pr.installation_id).filter(Boolean) || [];
-            const creatorIds = data?.map(pr => pr.created_by).filter(Boolean) || [];
+            // Early return if no data
+            if (!data || data.length === 0) return [];
 
-            let tasksMap = {};
-            let installationsMap = {};
-            let creatorsMap = {};
+            // Get unique IDs in one pass
+            const taskIds = [...new Set(data?.map(pr => pr.task_id).filter(Boolean) || [])];
+            const installationIds = [...new Set(data?.map(pr => pr.installation_id).filter(Boolean) || [])];
+            const creatorIds = [...new Set(data?.map(pr => pr.created_by).filter(Boolean) || [])];
+
+            // Batch fetch all related data in parallel
+            const [tasksData, installationsData, usersData] = await Promise.all([
+                taskIds.length > 0 ? supabase.from('tasks').select('id, title, project_id').in('id', taskIds) : Promise.resolve({ data: [] }),
+                installationIds.length > 0 ? supabase.from('installations').select('id, title, project_id').in('id', installationIds) : Promise.resolve({ data: [] }),
+                creatorIds.length > 0 ? supabase.from('users').select('id, name').in('id', creatorIds) : Promise.resolve({ data: [] })
+            ]);
+
+            // Build lookup maps
+            const tasksMap = {};
+            const installationsMap = {};
+            const creatorsMap = {};
+            const projectIds = new Set();
+
+            tasksData.data?.forEach(t => {
+                tasksMap[t.id] = t;
+                if (t.project_id) projectIds.add(t.project_id);
+            });
+            installationsData.data?.forEach(i => {
+                installationsMap[i.id] = i;
+                if (i.project_id) projectIds.add(i.project_id);
+            });
+            usersData.data?.forEach(u => creatorsMap[u.id] = u);
+
+            // Fetch projects if needed (single query)
             let projectsMap = {};
-
-            if (taskIds.length > 0) {
-                const { data: tasks } = await supabase
-                    .from('tasks')
-                    .select('id, title, project_id')
-                    .in('id', taskIds);
-                tasks?.forEach(t => {
-                    tasksMap[t.id] = t;
-                });
-                
-                // Get project IDs from tasks
-                const taskProjectIds = tasks?.map(t => t.project_id).filter(Boolean) || [];
-                if (taskProjectIds.length > 0) {
-                    const { data: projects } = await supabase
-                        .from('projects')
-                        .select('id, name')
-                        .in('id', taskProjectIds);
-                    projects?.forEach(p => projectsMap[p.id] = p);
-                }
-            }
-
-            if (installationIds.length > 0) {
-                const { data: installations } = await supabase
-                    .from('installations')
-                    .select('id, title, project_id')
-                    .in('id', installationIds);
-                installations?.forEach(i => {
-                    installationsMap[i.id] = i;
-                });
-                
-                // Get project IDs from installations
-                const instProjectIds = installations?.map(i => i.project_id).filter(Boolean) || [];
-                if (instProjectIds.length > 0) {
-                    const { data: projects } = await supabase
-                        .from('projects')
-                        .select('id, name')
-                        .in('id', instProjectIds);
-                    projects?.forEach(p => projectsMap[p.id] = p);
-                }
-            }
-
-            if (creatorIds.length > 0) {
-                const { data: users } = await supabase
-                    .from('users')
+            if (projectIds.size > 0) {
+                const { data: projects } = await supabase
+                    .from('projects')
                     .select('id, name')
-                    .in('id', creatorIds);
-                users?.forEach(u => creatorsMap[u.id] = u);
+                    .in('id', Array.from(projectIds));
+                projects?.forEach(p => projectsMap[p.id] = p);
             }
 
             return (data || []).map(pr => ({
@@ -3321,6 +3305,9 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 'planned': 'Запланирована',
                 'in_progress': 'В работе',
                 'waiting_materials': 'Ожидание материалов',
+                'in_order': 'В заказе',
+                'ready_for_receipt': 'Готов к получению',
+                'received': 'Получено',
                 'done': 'Выполнена',
                 'postponed': 'Отложена'
             };
