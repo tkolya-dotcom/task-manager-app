@@ -3042,7 +3042,16 @@ const buttons = [
                 actionsHtml += `<button class="btn btn-danger" style="margin-top:8px" onclick="deletePRModal('${pr.id}')">Удалить заявку</button>`;
             }
 
-            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}${projectInfo}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
+            // Build additional info - project and installation
+            let additionalInfo = '';
+            if (projectData) {
+                additionalInfo += `<div style="margin-bottom:8px"><strong>Проект:</strong> ${projectData.name}</div>`;
+            }
+            if (installationData) {
+                additionalInfo += `<div style="margin-bottom:8px"><strong>Монтаж:</strong> ${installationData.title}</div>`;
+            }
+            
+            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div>${additionalInfo}<div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<div class="form-group" style="margin-top:12px"><input type="text" id="prItemsSearch" placeholder="Поиск по позициям..." onkeyup="filterPRItems()"></div><div id="prItemsList"><h3 class="section-title">Позиции</h3>' + itemsHtml + '</div>' : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
         };
 
         window.approvePRModal = async function(prId) {
@@ -3072,6 +3081,49 @@ const buttons = [
                 if (error) throw error;
                 closeModal();
                 showToast('Заявка отклонена');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.setPRStatus = async function(prId, status) {
+            try {
+                const { error } = await supabase.from('purchase_requests').update({ status: status, updated_at: new Date().toISOString() }).eq('id', prId);
+                if (error) throw error;
+                showToast('Статус обновлен');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.showReadyForReceiptModal = function(prId, currentAddress) {
+            showModal('Готов к получению', '<div class="form-group"><label>Адрес получения</label><input type="text" id="receiptAddress" placeholder="Введите адрес получения" value="' + (currentAddress || '') + '"></div><div class="actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-warning" onclick="confirmReadyForReceipt(\'' + prId + '\')">Готов к получению</button></div>');
+        };
+
+        window.confirmReadyForReceipt = async function(prId) {
+            const receipt_address = document.getElementById('receiptAddress').value;
+            if (!receipt_address || receipt_address.trim() === '') { showToast('Введите адрес получения'); return; }
+            try {
+                const { error } = await supabase.from('purchase_requests').update({ status: 'ready_for_receipt', receipt_address: receipt_address, updated_at: new Date().toISOString() }).eq('id', prId);
+                if (error) throw error;
+                closeModal();
+                showToast('Заявка готова к получению');
+                showPRDetailModal(prId);
+            } catch (error) { showToast('Ошибка: ' + error.message); }
+        };
+
+        window.showReceivedModal = function(prId, currentDate) {
+            const now = new Date();
+            const defaultDate = currentDate ? currentDate.slice(0, 16) : now.toISOString().slice(0, 16);
+            showModal('Получено', '<div class="form-group"><label>Дата получения</label><input type="datetime-local" id="receivedDate" value="' + defaultDate + '"></div><div class="actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-success" onclick="confirmReceived(\'' + prId + '\')">Подтвердить получение</button></div>');
+        };
+
+        window.confirmReceived = async function(prId) {
+            const received_at = document.getElementById('receivedDate').value;
+            if (!received_at) { showToast('Выберите дату получения'); return; }
+            try {
+                const { error } = await supabase.from('purchase_requests').update({ status: 'received', received_at: received_at, updated_at: new Date().toISOString() }).eq('id', prId);
+                if (error) throw error;
+                closeModal();
+                showToast('Заявка получена');
                 showPRDetailModal(prId);
             } catch (error) { showToast('Ошибка: ' + error.message); }
         };
