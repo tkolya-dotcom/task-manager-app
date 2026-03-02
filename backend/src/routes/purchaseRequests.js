@@ -169,27 +169,33 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Update purchase request status (approve/reject/ready for pickup - manager only)
+// Update purchase request status (approve/reject/ready for receipt - manager only)
 router.put('/:id/status', authenticateToken, requireManager, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, comment, pickup_address } = req.body;
+    const { status, comment, receipt_address, received_at } = req.body;
 
-    const validStatuses = ['approved', 'rejected', 'ordered', 'ready_for_pickup', 'completed'];
+    const validStatuses = ['approved', 'rejected', 'in_order', 'ready_for_receipt', 'received', 'done', 'postponed'];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    // For ready_for_pickup status, pickup_address is required
-    if (status === 'ready_for_pickup' && !pickup_address) {
-      return res.status(400).json({ error: 'Pickup address is required for ready_for_pickup status' });
+    // For ready_for_receipt status, receipt_address is required
+    if (status === 'ready_for_receipt' && !receipt_address) {
+      return res.status(400).json({ error: 'Адрес получения обязателен для статуса "Готов к получению"' });
+    }
+
+    // For received status, received_at is required
+    if (status === 'received' && !received_at) {
+      return res.status(400).json({ error: 'Дата получения обязательна для статуса "Получено"' });
     }
 
     const updateData = { 
       status, 
       approved_by: req.user.id,
       comment: comment || null,
-      pickup_address: pickup_address || null,
+      receipt_address: receipt_address || null,
+      received_at: received_at || null,
       updated_at: new Date().toISOString()
     };
 
