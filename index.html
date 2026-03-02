@@ -3051,7 +3051,7 @@ const buttons = [
                 additionalInfo += `<div style="margin-bottom:8px"><strong>Монтаж:</strong> ${installationData.title}</div>`;
             }
             
-            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div>${additionalInfo}<div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<div class="form-group" style="margin-top:12px"><input type="text" id="prItemsSearch" placeholder="Поиск по позициям..." onkeyup="filterPRItems()"></div><div id="prItemsList"><h3 class="section-title">Позиции</h3>' + itemsHtml + '</div>' : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
+showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div>${additionalInfo}<div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.receipt_address ? `<div style="margin-bottom:8px"><strong>Адрес получения:</strong> ${pr.receipt_address}</div>` : ''}${pr.received_at ? `<div style="margin-bottom:8px"><strong>Дата получения:</strong> ${new Date(pr.received_at).toLocaleString('ru-RU')}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<div class="form-group" style="margin-top:12px"><input type="text" id="prItemsSearch" placeholder="Поиск по позициям..." onkeyup="filterPRItems()"></div><div id="prItemsList"><h3 class="section-title">Позиции</h3>' + itemsHtml + '</div>' : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
         };
 
         window.approvePRModal = async function(prId) {
@@ -3349,6 +3349,41 @@ const buttons = [
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 3000);
+        };
+
+        window.filterPRItems = function() {
+            const searchInput = document.getElementById('prItemsSearch');
+            if (!searchInput) return;
+            
+            const filter = searchInput.value.toLowerCase();
+            
+            // Check in detail view
+            const prItemsList = document.getElementById('prItemsList');
+            if (prItemsList) {
+                const items = prItemsList.querySelectorAll('.pr-item');
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(filter)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Check in create form - filter by material name in select options
+            const materialSelects = document.querySelectorAll('select[id$="Material"]');
+            materialSelects.forEach(select => {
+                const options = select.querySelectorAll('option');
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    if (filter === '' || text.includes(filter)) {
+                        option.style.display = '';
+                    } else {
+                        option.style.display = 'none';
+                    }
+                });
+            });
         };
 
         // ============================================================
@@ -3740,6 +3775,9 @@ const buttons = [
                         <option value="">-- Выберите монтаж --</option>
                         ${installationOptions}
                     </select>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="prItemsSearch" placeholder="Поиск по позициям..." onkeyup="filterPRItems()">
                 </div>
                 <div id="prItems">
                     <div class="form-group">
