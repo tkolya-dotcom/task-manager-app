@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY, -- Matches Supabase auth.users id directly
     email TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('manager', 'worker', 'deputy_head')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -72,10 +72,12 @@ CREATE TABLE IF NOT EXISTS installations (
     assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     status TEXT DEFAULT 'new' CHECK (
-      status IN ('new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed')
+      status IN ('new', 'planned', 'in_progress', 'waiting_materials', 'in_order', 'ready_for_receipt', 'received', 'done', 'postponed')
     ),
     scheduled_at TIMESTAMPTZ,
     address TEXT,
+    receipt_address TEXT,
+    received_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -96,9 +98,11 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     approved_by UUID REFERENCES users(id) ON DELETE SET NULL,
     status TEXT DEFAULT 'draft' CHECK (
-      status IN ('draft', 'pending', 'approved', 'rejected')
+      status IN ('draft', 'pending', 'approved', 'rejected', 'in_order', 'ready_for_receipt', 'received', 'done', 'postponed')
     ),
     comment TEXT,
+    receipt_address TEXT,
+    received_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
