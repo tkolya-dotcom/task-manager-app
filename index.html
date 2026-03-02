@@ -447,6 +447,24 @@
             border-color: var(--danger);
         }
 
+        .status-in_order {
+            background: rgba(0, 128, 255, 0.2);
+            color: #3399ff;
+            border-color: #3399ff;
+        }
+
+        .status-ready_for_receipt {
+            background: rgba(255, 165, 0, 0.2);
+            color: #FFA500;
+            border-color: #FFA500;
+        }
+
+        .status-received {
+            background: rgba(138, 43, 226, 0.2);
+            color: #8A2BE2;
+            border-color: #8A2BE2;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -2993,6 +3011,26 @@ const buttons = [
                 actionsHtml = `<div class="actions"><button class="btn btn-success" onclick="approvePRModal('${pr.id}')">Одобрить</button><button class="btn btn-danger" onclick="rejectPRModal('${pr.id}')">Отклонить</button></div>`;
             }
             
+            // Кнопки для изменения статуса после одобрения
+            const canChangeStatus = isElevated && (pr.status === 'approved' || pr.status === 'in_order' || pr.status === 'ready_for_receipt');
+            if (canChangeStatus) {
+                actionsHtml += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><h4 class="section-title">Изменить статус</h4>`;
+                
+                if (pr.status === 'approved') {
+                    actionsHtml += `<button class="btn btn-sm btn-secondary" style="margin:4px" onclick="setPRStatus('${pr.id}', 'in_order')">В заказе</button>`;
+                }
+                if (pr.status === 'approved' || pr.status === 'in_order') {
+                    actionsHtml += `<button class="btn btn-sm btn-warning" style="margin:4px" onclick="showReadyForReceiptModal('${pr.id}', '${pr.receipt_address || ''}')">Готов к получению</button>`;
+                }
+                if (pr.status === 'ready_for_receipt') {
+                    actionsHtml += `<button class="btn btn-sm btn-success" style="margin:4px" onclick="showReceivedModal('${pr.id}', '${pr.received_at || ''}')">Получено</button>`;
+                }
+                if (pr.status === 'received') {
+                    actionsHtml += `<button class="btn btn-sm btn-secondary" style="margin:4px" onclick="setPRStatus('${pr.id}', 'done')">Завершить</button>`;
+                }
+                actionsHtml += `</div>`;
+            }
+            
             // Show edit button only for the creator of the request
             const isCreator = pr.created_by === currentUserProfile?.id;
             if (isCreator && (pr.status === 'pending' || pr.status === 'rejected' || pr.status === 'draft')) {
@@ -3242,7 +3280,12 @@ const buttons = [
                 'draft': 'Черновик',
                 'pending': 'На рассмотрении',
                 'approved': 'Одобрена',
-                'rejected': 'Отклонена'
+                'rejected': 'Отклонена',
+                'in_order': 'В заказе',
+                'ready_for_receipt': 'Готов к получению',
+                'received': 'Получено',
+                'done': 'Завершена',
+                'postponed': 'Отложена'
             };
             return labels[status] || status;
         }
