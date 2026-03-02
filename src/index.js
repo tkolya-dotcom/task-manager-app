@@ -30,7 +30,13 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from the root directory (where index.html is located)
-app.use(express.static(rootDir));
+app.use(express.static(rootDir, {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    }
+  }
+}));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -47,6 +53,7 @@ app.use('/api/materials', materialsRoutes);
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.sendFile(join(rootDir, 'index.html'));
 });
 

@@ -30,8 +30,9 @@ export const authenticateToken = async (req, res, next) => {
 };
 
 export const requireManager = (req, res, next) => {
+  console.log('requireManager check: user role =', req.user?.role);
   if (req.user?.role !== 'manager') {
-    return res.status(403).json({ error: 'Access denied. Manager role required.' });
+    return res.status(403).json({ error: 'Доступ запрещён. Только менеджер может создавать монтажи.' });
   }
   next();
 };
