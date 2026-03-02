@@ -11,6 +11,8 @@ const Dashboard = () => {
     installations: 0,
     pendingRequests: 0
   });
+  const [tasks, setTasks] = useState([]);
+  const [installations, setInstallations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +28,16 @@ const Dashboard = () => {
         purchaseRequestsApi.getAll()
       ]);
 
+      const tasksData = tasksRes.tasks || [];
+      const installationsData = installationsRes.installations || [];
+
+      setTasks(tasksData);
+      setInstallations(installationsData);
+
       setStats({
         projects: projectsRes.projects?.length || 0,
-        tasks: tasksRes.tasks?.length || 0,
-        installations: installationsRes.installations?.length || 0,
+        tasks: tasksData.length,
+        installations: installationsData.length,
         pendingRequests: requestsRes.purchaseRequests?.filter(r => r.status === 'pending').length || 0
       });
     } catch (error) {
@@ -37,6 +45,85 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate task status breakdown
+  const getTaskStatusCounts = () => {
+    const counts = {
+      new: 0,
+      planned: 0,
+      in_progress: 0,
+      waiting_materials: 0,
+      done: 0,
+      postponed: 0
+    };
+    tasks.forEach(task => {
+      if (counts.hasOwnProperty(task.status)) {
+        counts[task.status]++;
+      }
+    });
+    return counts;
+  };
+
+  // Calculate installation status breakdown
+  const getInstallationStatusCounts = () => {
+    const counts = {
+      new: 0,
+      planned: 0,
+      in_progress: 0,
+      waiting_materials: 0,
+      done: 0,
+      postponed: 0
+    };
+    installations.forEach(inst => {
+      if (counts.hasOwnProperty(inst.status)) {
+        counts[inst.status]++;
+      }
+    });
+    return counts;
+  };
+
+  // Calculate overall progress
+  const calculateProgress = () => {
+    const totalTasks = tasks.length;
+    const totalInstallations = installations.length;
+    const total = totalTasks + totalInstallations;
+    
+    if (total === 0) return 0;
+    
+    const completedTasks = tasks.filter(t => t.status === 'done').length;
+    const completedInstallations = installations.filter(i => i.status === 'done').length;
+    const completed = completedTasks + completedInstallations;
+    
+    return Math.round((completed / total) * 100);
+  };
+
+  const taskStatusCounts = getTaskStatusCounts();
+  const installationStatusCounts = getInstallationStatusCounts();
+  const overallProgress = calculateProgress();
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      new: 'Новая',
+      planned: 'Запланирована',
+      in_progress: 'В работе',
+      waiting_materials: 'Ожидает материалов',
+      done: 'Выполнена',
+      postponed: 'Отложена'
+    };
+    return labels[status] || status;
+  };
+
+  const getInstallationStatusLabel = (status) => {
+    const labels = {
+      new: 'Новый',
+      planned: 'Запланирован',
+      in_progress: 'В работе',
+      waiting_materials: 'Ожидает материалов',
+      done: 'Завершён',
+      postponed: 'Отложен'
+    };
+    return labels[status] || status;
   };
 
   if (loading) {
@@ -94,6 +181,165 @@ const Dashboard = () => {
             <Link to="/purchase-requests" className="btn btn-primary" style={{ marginTop: '10px', display: 'inline-block' }}>
               Подробнее
             </Link>
+          </div>
+        </div>
+
+        {/* Progress Bar Section */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Общее выполнение</h3>
+          </div>
+          <div className="progress-container">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${overallProgress}%` }}
+              ></div>
+            </div>
+            <div className="progress-text">
+              <span>{overallProgress}% выполнено</span>
+              <span>
+                {tasks.filter(t => t.status === 'done').length + installations.filter(i => i.status === 'done').length} из {tasks.length + installations.length} завершено
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Task Status Breakdown */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Статусы задач</h3>
+          </div>
+          <div className="status-breakdown">
+            <div className="status-item">
+              <span className="status-badge status-new">{getStatusLabel('new')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-new" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.new / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.new}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-planned">{getStatusLabel('planned')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-planned" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.planned / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.planned}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-in_progress">{getStatusLabel('in_progress')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-in_progress" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.in_progress / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.in_progress}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-waiting_materials">{getStatusLabel('waiting_materials')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-waiting_materials" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.waiting_materials / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.waiting_materials}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-done">{getStatusLabel('done')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-done" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.done / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.done}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-postponed">{getStatusLabel('postponed')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-postponed" 
+                  style={{ width: `${stats.tasks > 0 ? (taskStatusCounts.postponed / stats.tasks) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{taskStatusCounts.postponed}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Installation Status Breakdown */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Статусы монтажей</h3>
+          </div>
+          <div className="status-breakdown">
+            <div className="status-item">
+              <span className="status-badge status-new">{getInstallationStatusLabel('new')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-new" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.new / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.new}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-planned">{getInstallationStatusLabel('planned')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-planned" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.planned / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.planned}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-in_progress">{getInstallationStatusLabel('in_progress')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-in_progress" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.in_progress / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.in_progress}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-waiting_materials">{getInstallationStatusLabel('waiting_materials')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-waiting_materials" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.waiting_materials / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.waiting_materials}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-done">{getInstallationStatusLabel('done')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-done" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.done / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.done}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge status-postponed">{getInstallationStatusLabel('postponed')}</span>
+              <div className="status-bar-container">
+                <div 
+                  className="status-bar status-postponed" 
+                  style={{ width: `${stats.installations > 0 ? (installationStatusCounts.postponed / stats.installations) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <span className="status-count">{installationStatusCounts.postponed}</span>
+            </div>
           </div>
         </div>
 

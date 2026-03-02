@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { purchaseRequestsApi, tasksApi, installationsApi } from '../api';
+import { purchaseRequestsApi, tasksApi, installationsApi, materialsApi } from '../api';
 
 const PurchaseRequests = () => {
   const { isManager, isWorker, user } = useAuth();
@@ -36,6 +36,12 @@ const PurchaseRequests = () => {
     quantity: 1,
     unit: 'шт'
   });
+  
+  // Material search states
+  const [materialSearch, setMaterialSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -86,6 +92,9 @@ const PurchaseRequests = () => {
     try {
       await purchaseRequestsApi.addItem(selectedRequest.id, itemFormData);
       setItemFormData({ name: '', quantity: 1, unit: 'шт' });
+      setMaterialSearch('');
+      setSearchResults([]);
+      setShowSearchResults(false);
       loadRequests();
       // Refresh the selected request to show new item
       const data = await purchaseRequestsApi.getById(selectedRequest.id);
@@ -102,6 +111,9 @@ const PurchaseRequests = () => {
       await purchaseRequestsApi.updateItem(editingItem.id, itemFormData);
       setEditingItem(null);
       setItemFormData({ name: '', quantity: 1, unit: 'шт' });
+      setMaterialSearch('');
+      setSearchResults([]);
+      setShowSearchResults(false);
       loadRequests();
       // Refresh the selected request to show updated item
       const data = await purchaseRequestsApi.getById(selectedRequest.id);
@@ -109,6 +121,38 @@ const PurchaseRequests = () => {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  // Material search handler
+  const handleMaterialSearch = async (searchTerm) => {
+    setMaterialSearch(searchTerm);
+    if (searchTerm.length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const data = await materialsApi.search(searchTerm);
+      setSearchResults(data.materials || []);
+      setShowSearchResults(true);
+    } catch (err) {
+      console.error('Error searching materials:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Select material from search results
+  const handleSelectMaterial = (material) => {
+    setItemFormData({
+      ...itemFormData,
+      name: material.name,
+      unit: material.default_unit || 'шт'
+    });
+    setMaterialSearch(material.name);
+    setSearchResults([]);
+    setShowSearchResults(false);
   };
 
   const handleDeleteItem = async (itemId) => {
@@ -155,8 +199,18 @@ const PurchaseRequests = () => {
   };
 
   const getRelatedName = (request) => {
-    if (request.task) return `Задача: ${request.task.title}`;
-    if (request.installation) return `Монтаж: ${request.installation.title}`;
+    if (request.task) {
+      const projectName = request.task.project?.name;
+      return projectName 
+        ? `Задача: ${request.task.title} (Проект: ${projectName})`
+        : `Задача: ${request.task.title}`;
+    }
+    if (request.installation) {
+      const projectName = request.installation.project?.name;
+      return projectName 
+        ? `Монтаж: ${request.installation.title} (Проект: ${projectName})`
+        : `Монтаж: ${request.installation.title}`;
+    }
     return '-';
   };
 
@@ -515,13 +569,86 @@ const PurchaseRequests = () => {
                 <form onSubmit={editingItem ? handleUpdateItem : handleAddItem}>
                   <div className="form-group">
                     <label>Название *</label>
-                    <input
-                      type="text"
-                      value={itemFormData.name}
-                      onChange={e => setItemFormData({ ...itemFormData, name: e.target.value })}
-                      required
-                      placeholder="Например: Болты М10"
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={editingItem ? itemFormData.name : materialSearch}
+                        onChange={e => editingItem ? setItemFormData({ ...itemFormData, name: e.target.value }) : handleMaterialSearch(e.target.value)}
+                        required
+                        placeholder="Например: Болты М10"
+                        autoComplete="off"
+                      />
+                      {showSearchResults && searchResults.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 1000,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}>
+                          {searchResults.map(material => (
+                            <div
+                              key={material.id}
+                              onClick={() => handleSelectMaterial(material)}
+                              style={{
+                                padding: '10px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #eee',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={e => e.target.style.backgroundColor = '#f5f5f5'}
+                              onMouseLeave={e => e.target.style.backgroundColor = 'white'}
+                            >
+                              <span>{material.name}</span>
+                              <span style={{ fontSize: '12px', color: '#757575' }}>
+                                {material.category} • {material.default_unit}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {searching && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          padding: '10px',
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          color: '#757575'
+                        }}>
+                          Поиск...
+                        </div>
+                      )}
+                    </div>
+                    {searchResults.length > 0 && !showSearchResults && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSearchResults(true)}
+                        style={{
+                          marginTop: '5px',
+                          fontSize: '12px',
+                          color: '#1976d2',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Показать найденные материалы ({searchResults.length})
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div className="form-group" style={{ flex: 1 }}>

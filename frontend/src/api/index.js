@@ -264,3 +264,29 @@ export const purchaseRequestsApi = {
     return handleResponse(response);
   }
 };
+
+// Materials API
+export const materialsApi = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams(filters).toString();
+    const response = await fetch(`${API_URL}/materials${params ? `?${params}` : ''}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  search: async (searchTerm) => {
+    const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
+    const response = await fetch(`${API_URL}/materials${params}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  getCategories: async () => {
+    const response = await fetch(`${API_URL}/materials/categories/list`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  }
+};

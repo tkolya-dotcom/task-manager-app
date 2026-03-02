@@ -47,21 +47,31 @@ const Tasks = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError('');
+    
+    if (!formData.project_id || !formData.title) {
+      setError('Пожалуйста, заполните обязательные поля (проект и название)');
+      return;
+    }
+    
     try {
       if (editingTask) {
         await tasksApi.update(editingTask.id, formData);
         setShowModal(false);
         setEditingTask(null);
       } else {
-        await tasksApi.create(formData);
+        console.log('Creating task with data:', formData);
+        const result = await tasksApi.create(formData);
+        console.log('Creation result:', result);
         setShowModal(false);
         setShowCreateModal(false);
       }
       setFormData({ project_id: '', title: '', description: '', assignee_id: '', status: 'new', due_date: '' });
       loadData();
     } catch (err) {
-      setError(err.message);
+      console.error('Error creating task:', err);
+      setError(err.message || 'Ошибка при создании задачи. Проверьте консоль браузера для деталей.');
     }
   };
 
@@ -157,6 +167,7 @@ const Tasks = () => {
               <thead>
                 <tr>
                   <th>Название</th>
+                  <th>Описание</th>
                   <th>Проект</th>
                   <th>Исполнитель</th>
                   <th>Статус</th>
@@ -168,6 +179,7 @@ const Tasks = () => {
                 {tasks.map(task => (
                   <tr key={task.id}>
                     <td>{task.title}</td>
+                    <td>{task.description ? (task.description.length > 50 ? task.description.substring(0, 50) + '...' : task.description) : '-'}</td>
                     <td>{task.project?.name || '-'}</td>
                     <td>{task.assignee?.name || '-'}</td>
                     <td>
