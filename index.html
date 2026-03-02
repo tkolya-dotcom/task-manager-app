@@ -2306,7 +2306,7 @@ const buttons = [
                 html += `<h3 class="section-title">Заявки на материалы</h3>`;
                 prs.forEach(pr => {
                     html += `
-                        <div class="card" onclick="showPRDetail('${pr.id}')">
+                        <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
@@ -2574,7 +2574,7 @@ const buttons = [
                 html += `<h3 class="section-title">Заявки на материалы</h3>`;
                 prsWithDetails.forEach(pr => {
                     html += `
-                        <div class="card" onclick="showPRDetail('${pr.id}')">
+                        <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
@@ -3138,7 +3138,7 @@ const buttons = [
                 await supabase.from('purchase_requests').update({ status: 'pending', comment: null, updated_at: new Date().toISOString() }).eq('id', prId);
                 closeModal();
                 showToast('Заявка отправлена на рассмотрение');
-                showPRDetail(prId);
+                showPRDetailModal(prId);
             } catch (error) { showToast('Ошибка: ' + error.message); }
         };
 
@@ -3174,7 +3174,7 @@ const buttons = [
 
                 closeModal();
                 showToast('Заявка одобрена');
-                showPRDetail(prId);
+                showPRDetailModal(prId);
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
@@ -3216,7 +3216,7 @@ const buttons = [
 
                 closeModal();
                 showToast('Заявка отклонена');
-                showPRDetail(prId);
+                showPRDetailModal(prId);
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
             }
