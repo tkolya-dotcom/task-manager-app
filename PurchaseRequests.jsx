@@ -193,7 +193,12 @@ const PurchaseRequests = () => {
       draft: 'Черновик',
       pending: 'Ожидает',
       approved: 'Подтверждена',
-      rejected: 'Отклонена'
+      rejected: 'Отклонена',
+      in_order: 'В заказе',
+      ready_for_receipt: 'Готов к получению',
+      received: 'Получено',
+      done: 'Завершён',
+      postponed: 'Отложен'
     };
     return labels[status] || status;
   };
@@ -334,6 +339,11 @@ const PurchaseRequests = () => {
                 <option value="pending">Ожидающие</option>
                 <option value="approved">Подтверждённые</option>
                 <option value="rejected">Отклонённые</option>
+                <option value="in_order">В заказе</option>
+                <option value="ready_for_receipt">Готов к получению</option>
+                <option value="received">Получено</option>
+                <option value="done">Завершённые</option>
+                <option value="postponed">Отложенные</option>
               </select>
               {canManageItems && (
                 <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>

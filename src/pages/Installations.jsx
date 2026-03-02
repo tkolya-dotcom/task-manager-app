@@ -20,7 +20,9 @@ const Installations = () => {
     assignee_id: '',
     status: 'new',
     scheduled_at: '',
-    address: ''
+    address: '',
+    receipt_address: '',
+    received_at: ''
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -77,7 +79,9 @@ const Installations = () => {
         assignee_id: '',
         status: 'new',
         scheduled_at: '',
-        address: ''
+        address: '',
+        receipt_address: '',
+        received_at: ''
       });
       loadData();
     } catch (err) {
@@ -97,7 +101,9 @@ const Installations = () => {
       assignee_id: installation.assignee_id || '',
       status: installation.status || 'new',
       scheduled_at: installation.scheduled_at ? installation.scheduled_at.slice(0, 16) : '',
-      address: installation.address || ''
+      address: installation.address || '',
+      receipt_address: installation.receipt_address || '',
+      received_at: installation.received_at ? installation.received_at.slice(0, 16) : ''
     });
     setShowModal(true);
   };
@@ -122,7 +128,9 @@ const Installations = () => {
       assignee_id: '',
       status: 'new',
       scheduled_at: '',
-      address: ''
+      address: '',
+      receipt_address: '',
+      received_at: ''
     });
     setShowModal(true);
   };
@@ -142,6 +150,9 @@ const Installations = () => {
       planned: 'Запланирован',
       in_progress: 'В работе',
       waiting_materials: 'Ожидает материалов',
+      in_order: 'В заказе',
+      ready_for_receipt: 'Готов к получению',
+      received: 'Получено',
       done: 'Завершён',
       postponed: 'Отложен'
     };
@@ -215,6 +226,9 @@ const Installations = () => {
                         <option value="planned">Запланирован</option>
                         <option value="in_progress">В работе</option>
                         <option value="waiting_materials">Ожидает материалов</option>
+                        <option value="in_order">В заказе</option>
+                        <option value="ready_for_receipt">Готов к получению</option>
+                        <option value="received">Получено</option>
                         <option value="done">Завершён</option>
                         <option value="postponed">Отложен</option>
                       </select>
@@ -323,6 +337,29 @@ const Installations = () => {
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
                 />
               </div>
+              {(formData.status === 'ready_for_receipt' || formData.status === 'received') && (
+                <>
+                  <div className="form-group">
+                    <label>Адрес получения</label>
+                    <input
+                      type="text"
+                      value={formData.receipt_address}
+                      onChange={e => setFormData({ ...formData, receipt_address: e.target.value })}
+                      placeholder="Введите адрес получения"
+                    />
+                  </div>
+                  {formData.status === 'received' && (
+                    <div className="form-group">
+                      <label>Дата получения</label>
+                      <input
+                        type="datetime-local"
+                        value={formData.received_at}
+                        onChange={e => setFormData({ ...formData, received_at: e.target.value })}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={submitting}>
                   Отмена
