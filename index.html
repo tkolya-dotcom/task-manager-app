@@ -2844,21 +2844,46 @@ const buttons = [
             let tasksMap = {};
             let installationsMap = {};
             let creatorsMap = {};
+            let projectsMap = {};
 
             if (taskIds.length > 0) {
                 const { data: tasks } = await supabase
                     .from('tasks')
-                    .select('id, title')
+                    .select('id, title, project_id')
                     .in('id', taskIds);
-                tasks?.forEach(t => tasksMap[t.id] = t);
+                tasks?.forEach(t => {
+                    tasksMap[t.id] = t;
+                });
+                
+                // Get project IDs from tasks
+                const taskProjectIds = tasks?.map(t => t.project_id).filter(Boolean) || [];
+                if (taskProjectIds.length > 0) {
+                    const { data: projects } = await supabase
+                        .from('projects')
+                        .select('id, name')
+                        .in('id', taskProjectIds);
+                    projects?.forEach(p => projectsMap[p.id] = p);
+                }
             }
 
             if (installationIds.length > 0) {
                 const { data: installations } = await supabase
                     .from('installations')
-                    .select('id, title')
+                    .select('id, title, project_id')
                     .in('id', installationIds);
-                installations?.forEach(i => installationsMap[i.id] = i);
+                installations?.forEach(i => {
+                    installationsMap[i.id] = i;
+                });
+                
+                // Get project IDs from installations
+                const instProjectIds = installations?.map(i => i.project_id).filter(Boolean) || [];
+                if (instProjectIds.length > 0) {
+                    const { data: projects } = await supabase
+                        .from('projects')
+                        .select('id, name')
+                        .in('id', instProjectIds);
+                    projects?.forEach(p => projectsMap[p.id] = p);
+                }
             }
 
             if (creatorIds.length > 0) {
@@ -2873,7 +2898,9 @@ const buttons = [
                 ...pr,
                 users: creatorsMap[pr.created_by] || null,
                 tasks: tasksMap[pr.task_id] || null,
-                installations: installationsMap[pr.installation_id] || null
+                installations: installationsMap[pr.installation_id] || null,
+                project: pr.task_id && tasksMap[pr.task_id] ? projectsMap[tasksMap[pr.task_id].project_id] || null :
+                         pr.installation_id && installationsMap[pr.installation_id] ? projectsMap[installationsMap[pr.installation_id].project_id] || null : null
             }));
         }
 
@@ -2889,13 +2916,14 @@ const buttons = [
             } else {
                 prs.forEach(pr => {
                     const itemType = pr.tasks ? 'Задача: ' + pr.tasks.title : (pr.installations ? 'Монтаж: ' + pr.installations.title : '');
+                    const projectInfo = pr.project ? ' | Проект: ' + pr.project.name : '';
                     html += `
                         <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
                             </div>
-                            <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}</div>
+                            <div class="list-item-subtitle">${pr.users?.name || ''} - ${itemType}${projectInfo}</div>
                         </div>
                     `;
                 });
@@ -2925,8 +2953,8 @@ const buttons = [
             // Batch fetch related data in parallel
             const [usersResult, tasksResult, installationsResult] = await Promise.all([
                 userIds.length > 0 ? supabase.from('users').select('id, name').in('id', userIds) : Promise.resolve({ data: [] }),
-                pr.task_id ? supabase.from('tasks').select('id, title').eq('id', pr.task_id).single() : Promise.resolve({ data: null }),
-                pr.installation_id ? supabase.from('installations').select('id, title').eq('id', pr.installation_id).single() : Promise.resolve({ data: null })
+                pr.task_id ? supabase.from('tasks').select('id, title, project_id').eq('id', pr.task_id).single() : Promise.resolve({ data: null }),
+                pr.installation_id ? supabase.from('installations').select('id, title, project_id').eq('id', pr.installation_id).single() : Promise.resolve({ data: null })
             ]);
             
             // Build lookup
@@ -2935,12 +2963,23 @@ const buttons = [
             
             const creatorName = usersMap[pr.created_by]?.name || 'Unknown';
             const approverName = usersMap[pr.approved_by]?.name || null;
-            const taskTitle = tasksResult.data?.title || null;
-            const installationTitle = installationsResult.data?.title || null;
+            const taskData = tasksResult.data || null;
+            const installationData = installationsResult.data || null;
+            
+            // Fetch project data if needed
+            let projectData = null;
+            if (taskData?.project_id) {
+                const { data: project } = await supabase.from('projects').select('id, name').eq('id', taskData.project_id).single();
+                projectData = project;
+            } else if (installationData?.project_id) {
+                const { data: project } = await supabase.from('projects').select('id, name').eq('id', installationData.project_id).single();
+                projectData = project;
+            }
             
             const isElevated = isElevatedUser();
             const canApprove = isElevated && pr.status === 'pending';
-            const itemType = taskTitle ? 'Задача: ' + taskTitle : (installationTitle ? 'Монтаж: ' + installationTitle : '');
+            const itemType = taskData ? 'Задача: ' + taskData.title : (installationData ? 'Монтаж: ' + installationData.title : '');
+            const projectInfo = projectData ? ' | Проект: ' + projectData.name : '';
 
             let itemsHtml = '';
             if (items && items.length > 0) {
@@ -2965,7 +3004,7 @@ const buttons = [
                 actionsHtml += `<button class="btn btn-danger" style="margin-top:8px" onclick="deletePRModal('${pr.id}')">Удалить заявку</button>`;
             }
 
-            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
+            showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px"><div style="margin-bottom:8px"><strong>Тип:</strong> ${itemType}${projectInfo}</div><div style="margin-bottom:8px"><strong>Статус:</strong> <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span></div><div style="margin-bottom:8px"><strong>Создал:</strong> ${creatorName}</div>${approverName ? `<div style="margin-bottom:8px"><strong>Подтвердил:</strong> ${approverName}</div>` : ''}${pr.comment ? `<div style="margin-bottom:8px"><strong>Комментарий:</strong> ${pr.comment}</div>` : ''}</div>${items && items.length > 0 ? '<h3 class="section-title">Позиции</h3>' + itemsHtml : '<p style="color:var(--text-muted)">Нет позиций</p>'}${actionsHtml}`);
         };
 
         window.approvePRModal = async function(prId) {
