@@ -1464,6 +1464,75 @@
         }
         
         // ============================================================
+        // WEB PUSH NOTIFICATIONS
+        // ============================================================
+        
+        // Request notification permission and store subscription
+        async function initNotifications() {
+            if (!('Notification' in window)) {
+                console.log('This browser does not support notifications');
+                return;
+            }
+            
+            // Request permission
+            if (Notification.permission === 'default') {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted');
+                    await saveNotificationPermission(permission);
+                }
+            } else if (Notification.permission === 'granted') {
+                console.log('Notifications already enabled');
+                await saveNotificationPermission('granted');
+            }
+        }
+        
+        // Save notification permission to user profile
+        async function saveNotificationPermission(permission) {
+            try {
+                await supabase
+                    .from('users')
+                    .update({ notification_enabled: permission === 'granted' })
+                    .eq('id', currentUserProfile?.id);
+            } catch (error) {
+                console.log('Could not save notification permission:', error);
+            }
+        }
+        
+        // Send notification to user when assigned to a task
+        async function notifyUserAssignedToTask(taskTitle, assigneeName, creatorName) {
+            // Check if notifications are enabled
+            if (Notification.permission !== 'granted') {
+                return;
+            }
+            
+            // Show browser notification
+            try {
+                const notification = new Notification('Новая задача!', {
+                    body: `Вас назначили на задачу: ${taskTitle}\nСоздал: ${creatorName}`,
+                    icon: 'manifest.json',
+                    badge: 'manifest.json',
+                    tag: 'task-assigned',
+                    requireInteraction: true
+                });
+                
+                // Click notification to navigate to task
+                notification.onclick = function() {
+                    window.focus();
+                    navigate('tasks');
+                    notification.close();
+                };
+                
+                // Auto-close after 5 seconds
+                setTimeout(() => {
+                    notification.close();
+                }, 5000);
+            } catch (error) {
+                console.log('Error showing notification:', error);
+            }
+        }
+        
+        // ============================================================
         // AUTH FUNCTIONS
         // ============================================================
         window.showAuthTab = function(tab) {
@@ -1703,6 +1772,9 @@
             const roleLabel = currentUserProfile?.role === 'manager' ? 'Руководитель' : (currentUserProfile?.role === 'deputy_head' ? 'Зам начальника отдела' : (currentUserProfile?.role === 'worker' ? 'Исполнитель' : 'Исполнитель'));
             document.getElementById('headerTitle').textContent = currentUserProfile?.name || 'Пользователь';
             document.getElementById('headerUser').textContent = '> ' + roleLabel;
+            
+            // Initialize push notifications
+            initNotifications();
             
             renderNav();
             renderContent();
@@ -2809,17 +2881,24 @@ const buttons = [
             }
 
             try {
+                // Build update data object
+                const updateData = { 
+                    title, 
+                    description, 
+                    project_id: project_id || null, 
+                    assignee_id: assignee_id || null, 
+                    status,
+                    updated_at: new Date().toISOString() 
+                };
+                
+                // Add due_date only if provided and valid
+                if (due_date && /^\d{4}-\d{2}-\d{2}$/.test(due_date)) {
+                    updateData.due_date = due_date;
+                }
+                
                 const { error } = await supabase
                     .from('tasks')
-                    .update({ 
-                        title, 
-                        description, 
-                        project_id: project_id || null, 
-                        assignee_id: assignee_id || null, 
-                        due_date: due_date,
-                        status,
-                        updated_at: new Date().toISOString() 
-                    })
+                    .update(updateData)
                     .eq('id', taskId);
 
                 if (error) throw error;
@@ -3666,7 +3745,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         </div>
                         <div class="form-group">
                             <label>Срок выполнения</label>
-                            <input type="datetime-local" id="taskDueDate">
+                            <input type="date" id="taskDueDate">
                         </div>
                         <div class="form-group">
                             <label>Статус</label>
@@ -3696,6 +3775,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
             
             // If already in YYYY-MM-DD format, return as-is
+            // This ensures Supabase treats it as a DATE without time component
             if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
                 return dateStr;
             }
@@ -3720,17 +3800,24 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
             
             try {
+                // Build task data object
+                const taskData = {
+                    title,
+                    description,
+                    project_id: project_id || null,
+                    assignee_id: assignee_id || null,
+                    status,
+                    created_by: currentUserProfile?.id
+                };
+                
+                // Add due_date only if provided and valid
+                if (due_date && /^\d{4}-\d{2}-\d{2}$/.test(due_date)) {
+                    taskData.due_date = due_date;
+                }
+                
                 const { error } = await supabase
                     .from('tasks')
-                    .insert([{
-                        title,
-                        description,
-                        project_id: project_id || null,
-                        assignee_id: assignee_id || null,
-                        due_date: due_date,
-                        status,
-                        created_by: currentUserProfile?.id
-                    }]);
+                    .insert([taskData]);
                 
                 if (error) throw error;
                 
