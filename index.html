@@ -3672,13 +3672,34 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             });
         };
         
+        // Helper function to parse due_date for storage - fixes the 3:00 AM issue
+        function parseDueDate(dateStr) {
+            if (!dateStr) return null;
+            
+            // If date is in YYYY-MM-DDTHH:mm format (from datetime-local input)
+            // Extract just the date part YYYY-MM-DD to avoid timezone issues
+            if (/^\d{4}-\d{2}-\d{2}T/.test(dateStr)) {
+                return dateStr.split('T')[0];
+            }
+            
+            // If already in YYYY-MM-DD format, return as-is
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                return dateStr;
+            }
+            
+            return dateStr;
+        }
+
         window.createTask = async function() {
             const title = document.getElementById('taskTitle').value;
             const description = document.getElementById('taskDescription').value;
             const project_id = document.getElementById('taskProject').value;
             const assignee_id = document.getElementById('taskAssignee').value;
-            const due_date = document.getElementById('taskDueDate').value;
+            const due_date_raw = document.getElementById('taskDueDate').value;
             const status = document.getElementById('taskStatus').value;
+            
+            // Parse the due_date to avoid 3:00 AM timezone issue
+            const due_date = parseDueDate(due_date_raw);
             
             if (!title) {
                 showToast('Введите название задачи');
@@ -3693,7 +3714,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         description,
                         project_id: project_id || null,
                         assignee_id: assignee_id || null,
-                        due_date: due_date || null,
+                        due_date: due_date,
                         status,
                         created_by: currentUserProfile?.id
                     }]);
