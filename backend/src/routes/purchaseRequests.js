@@ -196,6 +196,8 @@ router.put('/:id/status', authenticateToken, requireManager, async (req, res) =>
       comment: comment || null,
       receipt_address: receipt_address || null,
       received_at: received_at || null,
+      status_changed_at: new Date().toISOString(),
+      status_changed_by: req.user.id,
       updated_at: new Date().toISOString()
     };
 
