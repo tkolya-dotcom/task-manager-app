@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ========================================
-           CSS VARIABLES - Cyberpunk/Matrix Theme
+           CSS VARIABLES - Cyberpunk/JARVIS/Matrix Theme
            ======================================== */
         :root {
             --primary: #0A0A0F;
@@ -1490,14 +1490,11 @@
             }
             
             try {
-                console.log('Attempting login for:', email);
                 // Use Supabase Auth directly
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
-                
-                console.log('Auth response:', authData, authError);
                 
                 if (authError) {
                     // Handle specific error cases
@@ -1506,14 +1503,6 @@
                     }
                     throw new Error(authError.message);
                 }
-                
-                // Check if we have a valid session
-                if (!authData || !authData.session || !authData.session.access_token) {
-                    console.error('No session data:', authData);
-                    throw new Error('Не удалось получить сессию. Проверьте email и пароль.');
-                }
-                
-                console.log('Login successful, session:', authData.session);
                 
                 // Store the session
                 localStorage.setItem('token', authData.session.access_token);
@@ -2220,27 +2209,20 @@ const buttons = [
             // Show due date if exists
             let dueDateHtml = '';
             if (task.due_date) {
-                // Parse the date string properly, handling timezone correctly
-                let dueDate;
-                if (task.due_date.includes('+') || task.due_date.includes('Z') || task.due_date.includes('T')) {
-                    // Use Date.parse to properly handle timezone-aware ISO strings
-                    dueDate = new Date(task.due_date);
-                } else {
-                    // Fallback for date-only strings
-                    const dueDateParts = task.due_date.split('T');
-                    if (dueDateParts.length >= 2) {
-                        const datePart = dueDateParts[0];
-                        const timePart = dueDateParts[1].substring(0, 5);
-                        const [year, month, day] = datePart.split('-').map(Number);
-                        const [hours, minutes] = timePart.split(':').map(Number);
-                        dueDate = new Date(year, month - 1, day, hours, minutes);
-                    }
-                }
-                
-                if (dueDate && !isNaN(dueDate.getTime())) {
+                // Parse ISO date string directly to avoid UTC conversion issues
+                const dueDateParts = task.due_date.split('T');
+                if (dueDateParts.length >= 2) {
+                    const datePart = dueDateParts[0];
+                    const timePart = dueDateParts[1].substring(0, 5);
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                const dueDate = new Date(year, month - 1, day, hours, minutes);
                     const dueDateStr = dueDate.toLocaleDateString('ru-RU');
                     const dueTimeStr = dueDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     const isDueToday = dueDate.toDateString() === now.toDateString();
+                    const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
+                    dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
+                }
                     const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
                     dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
                 }
