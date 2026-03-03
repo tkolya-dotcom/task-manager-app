@@ -1392,7 +1392,10 @@
                 <h1 id="headerTitle" class="title-glow">Планировщик</h1>
                 <div id="headerUser" class="header-user"></div>
             </div>
-            <button class="logout-btn" onclick="logout()">Выход</button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="logout-btn" onclick="testNotification()" title="Тест уведомлений">🔔</button>
+                <button class="logout-btn" onclick="logout()">Выход</button>
+            </div>
         </div>
         
         <!-- Navigation -->
@@ -1501,19 +1504,35 @@
         
         // Send notification to user when assigned to a task
         async function notifyUserAssignedToTask(taskTitle, assigneeName, creatorName) {
-            // Check if notifications are enabled
-            if (Notification.permission !== 'granted') {
+            // Check if notifications are supported
+            if (!('Notification' in window)) {
+                console.log('Notifications not supported');
                 return;
+            }
+            
+            // Request permission if not granted
+            if (Notification.permission !== 'granted') {
+                try {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        console.log('Notification permission denied');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error requesting notification permission:', error);
+                    return;
+                }
             }
             
             // Show browser notification
             try {
-                const notification = new Notification('Новая задача!', {
+                const notification = new Notification('📋 Новая задача!', {
                     body: `Вас назначили на задачу: ${taskTitle}\nСоздал: ${creatorName}`,
-                    icon: 'manifest.json',
-                    badge: 'manifest.json',
-                    tag: 'task-assigned',
-                    requireInteraction: true
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    tag: 'task-assigned-' + Date.now(),
+                    requireInteraction: true,
+                    silent: false
                 });
                 
                 // Click notification to navigate to task
@@ -1527,10 +1546,18 @@
                 setTimeout(() => {
                     notification.close();
                 }, 5000);
+                
+                console.log('Notification shown for task:', taskTitle);
             } catch (error) {
-                console.log('Error showing notification:', error);
+                console.error('Error showing notification:', error);
             }
         }
+        
+        // Test notification function
+        window.testNotification = async function() {
+            await notifyUserAssignedToTask('Тестовая задача', currentUserProfile?.name || 'Исполнитель', 'Система');
+            showToast('Проверьте уведомление!');
+        };
         
         // ============================================================
         // AUTH FUNCTIONS
@@ -1778,6 +1805,13 @@
             
             renderNav();
             renderContent();
+            
+            // Show notification permission prompt if needed
+            if ('Notification' in window && Notification.permission === 'default') {
+                setTimeout(() => {
+                    showToast('🔔 Разрешите уведомления для получения задач', 6000);
+                }, 2000);
+            }
         }
         
         // Check auth state on load
@@ -2317,12 +2351,15 @@ const buttons = [
             
             let html = `<h2 style="margin-bottom: 16px">Задачи</h2>`;
             
-            html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`;
+            html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;overflow-x:auto;padding-bottom:8px">`;
             const filterOptions = [
                 { value: 'all', label: 'Все' },
                 { value: 'new', label: 'Новые' },
+                { value: 'planned', label: 'Запланированы' },
                 { value: 'in_progress', label: 'В работе' },
-                { value: 'done', label: 'Выполненные' }
+                { value: 'waiting_materials', label: 'Ожидание' },
+                { value: 'done', label: 'Выполнены' },
+                { value: 'postponed', label: 'Отложены' }
             ];
             filterOptions.forEach(opt => {
                 html += `<button class="btn btn-sm ${taskStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setTaskStatusFilter('${opt.value}')">${opt.label}</button>`;
@@ -2807,6 +2844,9 @@ const buttons = [
             
             if (!task) return;
 
+            // Check if current user is manager
+            const isManager = currentUserProfile?.role === 'manager';
+
             // Get projects for dropdown
             const { data: projects } = await supabase.from('projects').select('id, name').order('name');
             const projectOptions = projects?.map(p => 
@@ -2847,7 +2887,7 @@ const buttons = [
                 </div>
                 <div class="form-group">
                     <label>Срок выполнения</label>
-                    <input type="date" id="editTaskDueDate" value="${dueDateValue}">
+                    <input type="date" id="editTaskDueDate" value="${dueDateValue}" ${isManager ? '' : 'disabled'}>
                 </div>
                 <div class="form-group">
                     <label>Статус</label>
@@ -2869,11 +2909,19 @@ const buttons = [
             const description = document.getElementById('editTaskDescription').value;
             const project_id = document.getElementById('editTaskProject').value;
             const assignee_id = document.getElementById('editTaskAssignee').value;
-            const due_date_raw = document.getElementById('editTaskDueDate').value;
             const status = document.getElementById('editTaskStatus').value;
 
-            // Parse the due_date to avoid 3:00 AM timezone issue
-            const due_date = parseDueDate(due_date_raw);
+            // Only managers can change due_date
+            const isManager = currentUserProfile?.role === 'manager';
+            let due_date = null;
+            
+            if (isManager) {
+                const due_date_raw = document.getElementById('editTaskDueDate').value;
+                // Use raw value directly without parsing since it's already in YYYY-MM-DD format
+                if (due_date_raw && /^\d{4}-\d{2}-\d{2}$/.test(due_date_raw)) {
+                    due_date = due_date_raw;
+                }
+            }
 
             if (!title) {
                 showToast('Введите название задачи');
@@ -2881,6 +2929,16 @@ const buttons = [
             }
 
             try {
+                // Get current task to check if assignee changed
+                const { data: currentTask } = await supabase
+                    .from('tasks')
+                    .select('assignee_id')
+                    .eq('id', taskId)
+                    .single();
+                
+                const previousAssigneeId = currentTask?.assignee_id;
+                const newAssigneeId = assignee_id || null;
+                
                 // Build update data object
                 const updateData = { 
                     title, 
@@ -2891,10 +2949,12 @@ const buttons = [
                     updated_at: new Date().toISOString() 
                 };
                 
-                // Add due_date only if provided and valid
-                if (due_date && /^\d{4}-\d{2}-\d{2}$/.test(due_date)) {
+                // Add due_date only if manager and valid
+                if (due_date) {
                     updateData.due_date = due_date;
                 }
+                
+                console.log('Updating task with data:', updateData);
                 
                 const { error } = await supabase
                     .from('tasks')
@@ -2902,6 +2962,18 @@ const buttons = [
                     .eq('id', taskId);
 
                 if (error) throw error;
+
+                // Send notification if assignee was changed to a new user
+                if (newAssigneeId && newAssigneeId !== previousAssigneeId) {
+                    const { data: assigneeUser } = await supabase
+                        .from('users')
+                        .select('name')
+                        .eq('id', newAssigneeId)
+                        .single();
+                    
+                    const creatorName = currentUserProfile?.name || 'Руководитель';
+                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                }
 
                 closeModal();
                 showToast('Задача обновлена');
@@ -3791,9 +3863,6 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const due_date_raw = document.getElementById('taskDueDate').value;
             const status = document.getElementById('taskStatus').value;
             
-            // Parse the due_date to avoid 3:00 AM timezone issue
-            const due_date = parseDueDate(due_date_raw);
-            
             if (!title) {
                 showToast('Введите название задачи');
                 return;
@@ -3810,16 +3879,35 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                     created_by: currentUserProfile?.id
                 };
                 
-                // Add due_date only if provided and valid
-                if (due_date && /^\d{4}-\d{2}-\d{2}$/.test(due_date)) {
-                    taskData.due_date = due_date;
+                // Add due_date only if provided and valid - use exact string from input
+                if (due_date_raw && /^\d{4}-\d{2}-\d{2}$/.test(due_date_raw)) {
+                    taskData.due_date = due_date_raw; // Use raw value directly, no parsing needed
                 }
                 
-                const { error } = await supabase
+                console.log('Creating task with data:', taskData);
+                
+                const { data, error } = await supabase
                     .from('tasks')
-                    .insert([taskData]);
+                    .insert([taskData])
+                    .select()
+                    .single();
                 
                 if (error) throw error;
+                
+                console.log('Task created successfully:', data);
+                
+                // Send notification if assignee was selected
+                if (assignee_id) {
+                    // Get assignee name and creator name for notification
+                    const { data: assigneeUser } = await supabase
+                        .from('users')
+                        .select('name')
+                        .eq('id', assignee_id)
+                        .single();
+                    
+                    const creatorName = currentUserProfile?.name || 'Руководитель';
+                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                }
                 
                 closeModal();
                 showToast('Задача создана');
@@ -3920,6 +4008,18 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                     }]);
                 
                 if (error) throw error;
+                
+                // Send notification if assignee was selected
+                if (assignee_id) {
+                    const { data: assigneeUser } = await supabase
+                        .from('users')
+                        .select('name')
+                        .eq('id', assignee_id)
+                        .single();
+                    
+                    const creatorName = currentUserProfile?.name || 'Руководитель';
+                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                }
                 
                 closeModal();
                 showToast('Монтаж создан');

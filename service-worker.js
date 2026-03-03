@@ -57,6 +57,60 @@ const HOSTNAME_WHITELIST = [
       event.waitUntil(self.clients.claim())
     })
 
+    // Push Notification Handler
+    self.addEventListener('push', event => {
+        console.log('Push notification received:', event);
+        
+        let data = {};
+        if (event.data) {
+            try {
+                data = event.data.json();
+            } catch (e) {
+                data = { title: 'Планировщик', body: event.data.text() };
+            }
+        }
+        
+        const title = data.title || '📋 Новая задача!';
+        const options = {
+            body: data.body || 'Вас назначили на задачу',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            vibrate: [200, 100, 200],
+            tag: data.tag || 'task-notification-' + Date.now(),
+            data: data,
+            requireInteraction: true,
+            silent: false
+        };
+        
+        event.waitUntil(
+            self.registration.showNotification(title, options)
+        );
+    });
+
+    // Notification Click Handler
+    self.addEventListener('notificationclick', event => {
+        console.log('Notification clicked:', event);
+        
+        event.notification.close();
+        
+        // Open the tasks page when notification is clicked
+        event.waitUntil(
+            clients.matchAll({ type: 'window' }).then(clientList => {
+                // Focus existing window if open
+                for (let i = 0; i < clientList.length; i++) {
+                    const client = clientList[i];
+                    if (client.url.includes('/')) {
+                        return client.focus();
+                    }
+                }
+                // Open new window if none exist
+                if (clients.openWindow) {
+                    return clients.openWindow('/');
+                }
+            })
+        );
+    });
+
     /**
      *  @Functional Fetch
      *  All network requests are being intercepted here.
