@@ -86,14 +86,18 @@ router.get('/:id', authenticateToken, async (req, res) => {
 	}
 });
 
-// Helper function to parse date with timezone (Moscow UTC+3)
+// Helper function to parse date for storage
 const parseDueDate = (dateStr) => {
 	if (!dateStr) return null;
-	// If date is in YYYY-MM-DD format, convert to ISO with Moscow timezone (UTC+3)
-	// This ensures the date is stored as noon in Moscow time, avoiding 3:00 AM issue
+	
+	// If date is in YYYY-MM-DD format (from HTML date input)
+	// Return it as-is - Supabase will handle it correctly as a DATE type
+	// The previous implementation with timezone caused the 3:00 AM issue
+	// because Supabase was interpreting the timezone offset incorrectly
 	if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-		return `${dateStr}T12:00:00+03:00`;
+		return dateStr;
 	}
+	
 	return dateStr;
 };
 
@@ -109,7 +113,9 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
 
 		// Parse due_date with timezone fix
 		const parsedDueDate = parseDueDate(due_date);
-
+			
+		console.log('Creating task with due_date:', due_date, 'parsed as:', parsedDueDate);
+		
 		const { data: task, error } = await supabase
 			.from('tasks')
 			.insert([{ 
@@ -160,6 +166,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
 		// Parse due_date with timezone fix
 		const parsedDueDate = parseDueDate(due_date);
+		
+		console.log('Updating task', id, 'with due_date:', due_date, 'parsed as:', parsedDueDate);
 
 		let updateData = { 
 			title, 
