@@ -2209,12 +2209,13 @@ const buttons = [
             // Show due date if exists
             let dueDateHtml = '';
             if (task.due_date) {
-                const dueDate = new Date(task.due_date);
+                // Parse the date string directly to avoid timezone issues - due_date is stored as YYYY-MM-DD
+                const dueDateParts = task.due_date.split('T')[0].split('-');
+                const dueDate = new Date(dueDateParts[0], dueDateParts[1] - 1, dueDateParts[2]);
                 const dueDateStr = dueDate.toLocaleDateString('ru-RU');
-                const dueTimeStr = dueDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 const isDueToday = dueDate.toDateString() === now.toDateString();
                 const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
-                dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
+                dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr}</div>`;
             }
 
             return `
@@ -2746,6 +2747,9 @@ const buttons = [
                 `<option value="${u.id}" ${task.assignee_id === u.id ? 'selected' : ''}>${u.name}</option>`
             ).join('') || '';
 
+            // Format due_date for date input - extract just YYYY-MM-DD
+            const dueDateValue = task.due_date ? task.due_date.split('T')[0] : '';
+
             showModal('Редактировать задачу', `
                 <div class="form-group">
                     <label>Название</label>
@@ -2770,6 +2774,10 @@ const buttons = [
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Срок выполнения</label>
+                    <input type="date" id="editTaskDueDate" value="${dueDateValue}">
+                </div>
+                <div class="form-group">
                     <label>Статус</label>
                     <select id="editTaskStatus">
                         <option value="new" ${task.status === 'new' ? 'selected' : ''}>Новая</option>
@@ -2789,7 +2797,11 @@ const buttons = [
             const description = document.getElementById('editTaskDescription').value;
             const project_id = document.getElementById('editTaskProject').value;
             const assignee_id = document.getElementById('editTaskAssignee').value;
+            const due_date_raw = document.getElementById('editTaskDueDate').value;
             const status = document.getElementById('editTaskStatus').value;
+
+            // Parse the due_date to avoid 3:00 AM timezone issue
+            const due_date = parseDueDate(due_date_raw);
 
             if (!title) {
                 showToast('Введите название задачи');
@@ -2804,6 +2816,7 @@ const buttons = [
                         description, 
                         project_id: project_id || null, 
                         assignee_id: assignee_id || null, 
+                        due_date: due_date,
                         status,
                         updated_at: new Date().toISOString() 
                     })
