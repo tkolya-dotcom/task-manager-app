@@ -144,16 +144,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You can only update your own tasks' });
     }
 
+    let updateData = { 
+      title, 
+      description, 
+      assignee_id, 
+      status,
+      due_date,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (status && existingTask.status !== status) {
+      updateData.status_changed_at = new Date().toISOString();
+      updateData.status_changed_by = req.user.id;
+    }
+
     const { data: task, error } = await supabase
       .from('tasks')
-      .update({ 
-        title, 
-        description, 
-        assignee_id, 
-        status,
-        due_date,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

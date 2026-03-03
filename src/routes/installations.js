@@ -147,19 +147,26 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You can only update your own installations' });
     }
 
+    let updateData = { 
+      title, 
+      description, 
+      assignee_id, 
+      status,
+      scheduled_at,
+      address,
+      receipt_address,
+      received_at,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (status && existingInstallation.status !== status) {
+      updateData.status_changed_at = new Date().toISOString();
+      updateData.status_changed_by = req.user.id;
+    }
+
     const { data: installation, error } = await supabase
       .from('installations')
-      .update({ 
-        title, 
-        description, 
-        assignee_id, 
-        status,
-        scheduled_at,
-        address,
-        receipt_address,
-        received_at,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
