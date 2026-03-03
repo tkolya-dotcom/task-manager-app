@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ========================================
-           CSS VARIABLES - Cyberpunk/JARVIS/Matrix Theme
+           CSS VARIABLES - Cyberpunk/Matrix Theme
            ======================================== */
         :root {
             --primary: #0A0A0F;
@@ -1490,11 +1490,14 @@
             }
             
             try {
+                console.log('Attempting login for:', email);
                 // Use Supabase Auth directly
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
+                
+                console.log('Auth response:', authData, authError);
                 
                 if (authError) {
                     // Handle specific error cases
@@ -1503,6 +1506,13 @@
                     }
                     throw new Error(authError.message);
                 }
+                
+                if (!authData || !authData.session) {
+                    console.error('No session data:', authData);
+                    throw new Error('Не удалось получить сессию');
+                }
+                
+                console.log('Login successful, session:', authData.session);
                 
                 // Store the session
                 localStorage.setItem('token', authData.session.access_token);
