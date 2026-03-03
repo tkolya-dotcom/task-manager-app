@@ -2295,6 +2295,7 @@ const buttons = [
                     <div class="detail-title">${task.title}</div>
                     <div class="detail-meta">Проект: ${task.projects?.name || '-'}</div>
                     <div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div>
+                    ${task.status_changed_by ? `<div class="detail-meta">Статус изменён: ${task.status_changed_by?.name || 'Пользователь'} ${task.status_changed_at ? new Date(task.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
                 </div>
             `;
             
@@ -2580,9 +2581,19 @@ const buttons = [
                 html += `
                     <div class="card">
                         <h3 class="section-title">Изменить статус</h3>
-                        <select id="instStatus" class="form-group" style="margin-bottom: 12px">
+                        <select id="instStatus" class="form-group" style="margin-bottom: 12px" onchange="toggleInstReceiptFields()">
                             ${statusOptions}
                         </select>
+                        <div id="instReceiptFields" style="display: none;">
+                            <div class="form-group">
+                                <label>Адрес получения</label>
+                                <input type="text" id="instReceiptAddress" value="${inst.receipt_address || ''}" placeholder="Введите адрес получения">
+                            </div>
+                            <div class="form-group" id="instReceivedAtGroup" style="display: none;">
+                                <label>Дата получения</label>
+                                <input type="datetime-local" id="instReceivedAt" value="${inst.received_at ? inst.received_at.slice(0, 16) : ''}">
+                            </div>
+                        </div>
                         <button class="btn" onclick="updateInstallationStatus('${inst.id}')">Сохранить</button>
                     </div>
                 `;
@@ -2611,13 +2622,55 @@ const buttons = [
             document.getElementById('content').innerHTML = html;
         }
 
+        window.toggleInstReceiptFields = function() {
+            const status = document.getElementById('instStatus').value;
+            const receiptFields = document.getElementById('instReceiptFields');
+            const receivedAtGroup = document.getElementById('instReceivedAtGroup');
+            
+            if (receiptFields) {
+                if (status === 'ready_for_receipt' || status === 'received') {
+                    receiptFields.style.display = 'block';
+                    if (receivedAtGroup) {
+                        receivedAtGroup.style.display = status === 'received' ? 'block' : 'none';
+                    }
+                } else {
+                    receiptFields.style.display = 'none';
+                }
+            }
+        };
+
         window.updateInstallationStatus = async function(instId) {
             const status = document.getElementById('instStatus').value;
+            
+            // Build update object
+            const updateData = { 
+                status, 
+                updated_at: new Date().toISOString() 
+            };
+            
+            // Add receipt address and received date for relevant statuses
+            if (status === 'ready_for_receipt') {
+                const receiptAddress = document.getElementById('instReceiptAddress').value;
+                if (!receiptAddress || receiptAddress.trim() === '') {
+                    showToast('Введите адрес получения');
+                    return;
+                }
+                updateData.receipt_address = receiptAddress;
+            }
+            
+            if (status === 'received') {
+                const receivedAt = document.getElementById('instReceivedAt').value;
+                if (!receivedAt) {
+                    showToast('Выберите дату получения');
+                    return;
+                }
+                updateData.received_at = receivedAt;
+            }
 
             try {
                 const { error } = await supabase
                     .from('installations')
-                    .update({ status, updated_at: new Date().toISOString() })
+                    .update(updateData)
                     .eq('id', instId);
 
                 if (error) throw error;
