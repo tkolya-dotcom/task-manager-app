@@ -2209,12 +2209,23 @@ const buttons = [
             // Show due date if exists
             let dueDateHtml = '';
             if (task.due_date) {
-                const dueDate = new Date(task.due_date);
-                const dueDateStr = dueDate.toLocaleDateString('ru-RU');
-                const dueTimeStr = dueDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const isDueToday = dueDate.toDateString() === now.toDateString();
-                const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
-                dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
+                // Parse ISO date string directly to avoid UTC conversion issues
+                const dueDateParts = task.due_date.split('T');
+                if (dueDateParts.length >= 2) {
+                    const datePart = dueDateParts[0];
+                    const timePart = dueDateParts[1].substring(0, 5);
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                const dueDate = new Date(year, month - 1, day, hours, minutes);
+                    const dueDateStr = dueDate.toLocaleDateString('ru-RU');
+                    const dueTimeStr = dueDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                    const isDueToday = dueDate.toDateString() === now.toDateString();
+                    const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
+                    dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
+                }
+                    const dueDateColor = isOverdue ? 'color: var(--danger);' : (isDueToday ? 'color: var(--warning);' : '');
+                    dueDateHtml = `<div style="font-size:11px;${dueDateColor}margin-top:4px;">📅 ${dueDateStr} ${dueTimeStr}</div>`;
+                }
             }
 
             return `
@@ -3392,6 +3403,26 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         // ============================================================
         // HELPER FUNCTIONS
         // ============================================================
+        // Helper function to parse date with timezone (Moscow UTC+3)
+        function parseDueDate(dateStr) {
+            if (!dateStr) return null;
+            // Parse due_date with timezone to avoid the 3:00 AM issue
+            // Format: YYYY-MM-DD or YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                // Date only (from date input) - set to noon Moscow time
+                return `${dateStr}T12:00:00+03:00`;
+            }
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(dateStr)) {
+                // Date with time but no timezone (from datetime-local input)
+                // Add seconds if missing and add Moscow timezone
+                const withSeconds = dateStr.includes(':') && dateStr.split(':').length === 2 
+                    ? `${dateStr}:00` 
+                    : dateStr;
+                return `${withSeconds}+03:00`;
+            }
+            return dateStr;
+        }
+
         function getStatusLabel(status) {
             const labels = {
                 'new': 'Новая',
@@ -3686,6 +3717,9 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
             
             try {
+                // Parse due_date with timezone to avoid the 3:00 AM issue
+                const parsedDueDate = parseDueDate(due_date);
+                
                 const { error } = await supabase
                     .from('tasks')
                     .insert([{
@@ -3693,7 +3727,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         description,
                         project_id: project_id || null,
                         assignee_id: assignee_id || null,
-                        due_date: due_date || null,
+                        due_date: parsedDueDate,
                         status,
                         created_by: currentUserProfile?.id
                     }]);
