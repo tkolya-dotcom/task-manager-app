@@ -48,6 +48,89 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Search addresses from atss_q1_2026
+router.get('/search-address', authenticateToken, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({ addresses: [] });
+    }
+
+    // Search in atss_q1_2026 table
+    const { data: addresses, error } = await supabase
+      .from('atss_q1_2026')
+      .select(`
+        id_ploshadki,
+        servisnyy_id,
+        adres_razmeshcheniya,
+        rayon,
+        id_sk1,
+        naimenovanie_sk1,
+        status_oborudovaniya1,
+        tip_sk_po_dogovoru1,
+        id_sk2,
+        naimenovanie_sk2,
+        status_oborudovaniya2,
+        tip_sk_po_dogovoru2,
+        id_sk3,
+        naimenovanie_sk3,
+        status_oborudovaniya3,
+        tip_sk_po_dogovoru3,
+        id_sk4,
+        naimenovanie_sk4,
+        status_oborudovaniya4,
+        tip_sk_po_dogovoru4,
+        id_sk5,
+        naimenovanie_sk5,
+        status_oborudovaniya5,
+        tip_sk_po_dogovoru5,
+        id_sk6,
+        naimenovanie_sk6,
+        status_oborudovaniya6,
+        tip_sk_po_dogovoru6,
+        planovaya_data_1_kv_2026
+      `)
+      .ilike('adres_razmeshcheniya', `%${q}%`)
+      .limit(20);
+
+    if (error) {
+      console.error('Search addresses error:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Transform data for frontend
+    const transformedAddresses = (addresses || []).map(addr => ({
+      id_ploshadki: addr.id_ploshadki,
+      servisnyy_id: addr.servisnyy_id,
+      adres_razmeshcheniya: addr.adres_razmeshcheniya,
+      rayon: addr.rayon,
+      planovaya_data_1_kv_2026: addr.planovaya_data_1_kv_2026,
+      sk_count: [
+        addr.id_sk1,
+        addr.id_sk2,
+        addr.id_sk3,
+        addr.id_sk4,
+        addr.id_sk5,
+        addr.id_sk6
+      ].filter(Boolean).length,
+      sk: [
+        addr.id_sk1 ? { id_sk: addr.id_sk1, naimenovanie_sk: addr.naimenovanie_sk1, status_oborudovaniya: addr.status_oborudovaniya1, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru1 } : null,
+        addr.id_sk2 ? { id_sk: addr.id_sk2, naimenovanie_sk: addr.naimenovanie_sk2, status_oborudovaniya: addr.status_oborudovaniya2, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru2 } : null,
+        addr.id_sk3 ? { id_sk: addr.id_sk3, naimenovanie_sk: addr.naimenovanie_sk3, status_oborudovaniya: addr.status_oborudovaniya3, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru3 } : null,
+        addr.id_sk4 ? { id_sk: addr.id_sk4, naimenovanie_sk: addr.naimenovanie_sk4, status_oborudovaniya: addr.status_oborudovaniya4, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru4 } : null,
+        addr.id_sk5 ? { id_sk: addr.id_sk5, naimenovanie_sk: addr.naimenovanie_sk5, status_oborudovaniya: addr.status_oborudovaniya5, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru5 } : null,
+        addr.id_sk6 ? { id_sk: addr.id_sk6, naimenovanie_sk: addr.naimenovanie_sk6, status_oborudovaniya: addr.status_oborudovaniya6, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru6 } : null
+      ].filter(Boolean)
+    }));
+
+    res.json({ addresses: transformedAddresses });
+  } catch (error) {
+    console.error('Search addresses error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get single installation
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -90,7 +173,18 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, requireManager, async (req, res) => {
   try {
     console.log('Creating installation, user role:', req.user.role);
-    const { project_id, title, description, assignee_id, status = 'new', scheduled_at, address, receipt_address, received_at } = req.body;
+    const { 
+      project_id, title, description, assignee_id, status = 'new', 
+      scheduled_at, address, receipt_address, received_at,
+      // SK fields
+      id_ploshadki, servisnyy_id, rayon, planovaya_data_1_kv_2026,
+      id_sk1, naimenovanie_sk1, status_oborudovaniya1, tip_sk_po_dogovoru1,
+      id_sk2, naimenovanie_sk2, status_oborudovaniya2, tip_sk_po_dogovoru2,
+      id_sk3, naimenovanie_sk3, status_oborudovaniya3, tip_sk_po_dogovoru3,
+      id_sk4, naimenovanie_sk4, status_oborudovaniya4, tip_sk_po_dogovoru4,
+      id_sk5, naimenovanie_sk5, status_oborudovaniya5, tip_sk_po_dogovoru5,
+      id_sk6, naimenovanie_sk6, status_oborudovaniya6, tip_sk_po_dogovoru6
+    } = req.body;
 
     if (!project_id || !title) {
       return res.status(400).json({ error: 'Project ID and title are required' });
@@ -107,7 +201,36 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
         scheduled_at,
         address,
         receipt_address,
-        received_at
+        received_at,
+        // SK fields
+        id_ploshadki,
+        servisnyy_id,
+        rayon,
+        planovaya_data_1_kv_2026,
+        id_sk1,
+        naimenovanie_sk1,
+        status_oborudovaniya1,
+        tip_sk_po_dogovoru1,
+        id_sk2,
+        naimenovanie_sk2,
+        status_oborudovaniya2,
+        tip_sk_po_dogovoru2,
+        id_sk3,
+        naimenovanie_sk3,
+        status_oborudovaniya3,
+        tip_sk_po_dogovoru3,
+        id_sk4,
+        naimenovanie_sk4,
+        status_oborudovaniya4,
+        tip_sk_po_dogovoru4,
+        id_sk5,
+        naimenovanie_sk5,
+        status_oborudovaniya5,
+        tip_sk_po_dogovoru5,
+        id_sk6,
+        naimenovanie_sk6,
+        status_oborudovaniya6,
+        tip_sk_po_dogovoru6
       }])
       .select()
       .single();
@@ -129,7 +252,17 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, assignee_id, status, scheduled_at, address, receipt_address, received_at } = req.body;
+    const { 
+      title, description, assignee_id, status, scheduled_at, address, receipt_address, received_at,
+      // SK fields
+      id_ploshadki, servisnyy_id, rayon, planovaya_data_1_kv_2026,
+      id_sk1, naimenovanie_sk1, status_oborudovaniya1, tip_sk_po_dogovoru1,
+      id_sk2, naimenovanie_sk2, status_oborudovaniya2, tip_sk_po_dogovoru2,
+      id_sk3, naimenovanie_sk3, status_oborudovaniya3, tip_sk_po_dogovoru3,
+      id_sk4, naimenovanie_sk4, status_oborudovaniya4, tip_sk_po_dogovoru4,
+      id_sk5, naimenovanie_sk5, status_oborudovaniya5, tip_sk_po_dogovoru5,
+      id_sk6, naimenovanie_sk6, status_oborudovaniya6, tip_sk_po_dogovoru6
+    } = req.body;
 
     // Check if installation exists
     const { data: existingInstallation } = await supabase
@@ -156,6 +289,35 @@ router.put('/:id', authenticateToken, async (req, res) => {
       address,
       receipt_address,
       received_at,
+      // SK fields
+      id_ploshadki,
+      servisnyy_id,
+      rayon,
+      planovaya_data_1_kv_2026,
+      id_sk1,
+      naimenovanie_sk1,
+      status_oborudovaniya1,
+      tip_sk_po_dogovoru1,
+      id_sk2,
+      naimenovanie_sk2,
+      status_oborudovaniya2,
+      tip_sk_po_dogovoru2,
+      id_sk3,
+      naimenovanie_sk3,
+      status_oborudovaniya3,
+      tip_sk_po_dogovoru3,
+      id_sk4,
+      naimenovanie_sk4,
+      status_oborudovaniya4,
+      tip_sk_po_dogovoru4,
+      id_sk5,
+      naimenovanie_sk5,
+      status_oborudovaniya5,
+      tip_sk_po_dogovoru5,
+      id_sk6,
+      naimenovanie_sk6,
+      status_oborudovaniya6,
+      tip_sk_po_dogovoru6,
       updated_at: new Date().toISOString()
     };
     
