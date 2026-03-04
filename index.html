@@ -4284,7 +4284,6 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             // Debounce search
             searchTimeout = setTimeout(async () => {
                 try {
-                    // Search in quarter_2026 table first
                     const { data: addresses, error } = await supabase
                         .from('quarter_2026')
                         .select('*')
@@ -4300,23 +4299,39 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         return;
                     }
                     
-                    suggestionsDiv.innerHTML = `
-                        <div style="position:absolute;top:100%;left:0;right:0;background:var(--secondary);border:1px solid var(--border);border-radius:8px;z-index:1000;max-height:300px;overflow-y:auto;box-shadow:var(--glow-cyan)">
-                            ${addresses.map(addr => `
-                                <div onclick="fillInstallationFields(${JSON.stringify(addr).replace(/'/g, "&apos;")}); document.getElementById('instAddress').value='${addr.adres_razmeshcheniya}'; document.getElementById('addressSuggestions').innerHTML = '';"
-                                     style="padding:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s"
-                                     onmouseover="this.style.background='rgba(0,217,255,0.1)'"
-                                     onmouseout="this.style.background='transparent'">
-                                    <div style="font-weight:600;color:var(--accent)">${addr.adres_razmeshcheniya}</div>
-                                    ${addr.naimenovanie_sk ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${addr.naimenovanie_sk}</div>` : ''}
-                                    ${addr.rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${addr.rayon}</div>` : ''}
-                                    ${addr.servisnyy_id ? `<div style="font-size:11px;color:var(--text-muted)">ID: ${addr.servisnyy_id}</div>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
+                    let html = '<div style="position:absolute;top:100%;left:0;right:0;background:var(--secondary);border:1px solid var(--border);border-radius:8px;z-index:1000;max-height:300px;overflow-y:auto;box-shadow:var(--glow-cyan)">';
+                    
+                    addresses.forEach((addr, index) => {
+                        const addrId = 'addr-' + index + '-' + Date.now();
+                        html += `
+                            <div id="${addrId}" style="padding:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s"
+                                 onmouseover="this.style.background='rgba(0,217,255,0.1)'"
+                                 onmouseout="this.style.background='transparent'">
+                                <div style="font-weight:600;color:var(--accent)">${addr.adres_razmeshcheniya || ''}</div>
+                                ${addr.naimenovanie_sk ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${addr.naimenovanie_sk}</div>` : ''}
+                                ${addr.rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${addr.rayon}</div>` : ''}
+                                ${addr.servisnyy_id ? `<div style="font-size:11px;color:var(--text-muted)">ID: ${addr.servisnyy_id}</div>` : ''}
+                            </div>
+                        `;
+                        
+                        // Add click handler separately
+                        setTimeout(() => {
+                            const element = document.getElementById(addrId);
+                            if (element) {
+                                element.onclick = function() {
+                                    fillInstallationFields(addr);
+                                    document.getElementById('instAddress').value = addr.adres_razmeshcheniya || '';
+                                    document.getElementById('addressSuggestions').innerHTML = '';
+                                };
+                            }
+                        }, 0);
+                    });
+                    
+                    html += '</div>';
+                    suggestionsDiv.innerHTML = html;
                 } catch (error) {
                     console.error('Address search error:', error);
+                    console.log('Error details:', error.message);
                 }
             }, 300);
         };
@@ -4336,6 +4351,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         
         // Fill installation fields from quarter_2026 or conditioners table
         window.fillInstallationFields = function(data) {
+            console.log('Filling installation fields:', data);
+            
             document.getElementById('instIdPloshadki').value = data.id_ploshadki || '';
             document.getElementById('instServisnyyId').value = data.servisnyy_id || '';
             document.getElementById('instRayon').value = data.rayon || '';
@@ -4344,11 +4361,12 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             document.getElementById('instStatusOborudovaniya').value = data.status_oborudovaniya || '';
             document.getElementById('instTipSkPoDogovoru').value = data.tip_sk_po_dogovoru || '';
             
-            // Convert planovaya_data (integer) to date string
             if (data.planovaya_data_1_kv_2026) {
                 const date = new Date(data.planovaya_data_1_kv_2026);
                 document.getElementById('instPlanovayaData').value = date.toLocaleDateString('ru-RU');
             }
+            
+            console.log('Fields filled successfully');
         };
         
         // Close suggestions when clicking outside
