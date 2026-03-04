@@ -159,6 +159,14 @@ export const installationsApi = {
     return handleResponse(response);
   },
 
+  searchAddresses: async (searchTerm) => {
+    const params = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    const response = await fetch(`${API_URL}/installations/search-address${params}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
   create: async (installation) => {
     const response = await fetch(`${API_URL}/installations`, {
       method: 'POST',
@@ -221,11 +229,11 @@ export const purchaseRequestsApi = {
     return handleResponse(response);
   },
 
-  updateStatus: async (id, status, comment) => {
+  updateStatus: async (id, status, comment, receipt_address, received_at) => {
     const response = await fetch(`${API_URL}/purchase-requests/${id}/status`, {
       method: 'PUT',
       headers: headers(),
-      body: JSON.stringify({ status, comment })
+      body: JSON.stringify({ status, comment, receipt_address, received_at })
     });
     return handleResponse(response);
   },
