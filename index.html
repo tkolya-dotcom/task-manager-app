@@ -3330,6 +3330,18 @@ const buttons = [
 
                 if (error) throw error;
 
+                // Send notification if assignee was changed to a new user
+                if (newAssigneeId && newAssigneeId !== previousAssigneeId) {
+                    const { data: assigneeUser } = await supabase
+                        .from('users')
+                        .select('name')
+                        .eq('id', newAssigneeId)
+                        .single();
+                    
+                    const creatorName = currentUserProfile?.name || 'Руководитель';
+                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                }
+
                 closeModal();
                 showToast('Монтаж обновлен');
                 renderInstallations(document.getElementById('content'));
@@ -4207,6 +4219,38 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             <div id="addressSuggestions" style="position:relative;"></div>
                         </div>
                         <div class="form-group">
+                            <label>ID площадки</label>
+                            <input type="text" id="instIdPloshadki" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Сервисный ID</label>
+                            <input type="text" id="instServisnyyId" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Район</label>
+                            <input type="text" id="instRayon" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>ID СК</label>
+                            <input type="text" id="instIdSk" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Наименование СК</label>
+                            <input type="text" id="instNaimenovanieSk" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Статус оборудования</label>
+                            <input type="text" id="instStatusOborudovaniya" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Тип СК по договору</label>
+                            <input type="text" id="instTipSkPoDogovoru" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
+                            <label>Плановая дата 1 кв. 2026</label>
+                            <input type="text" id="instPlanovayaData" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        </div>
+                        <div class="form-group">
                             <label>Дата и время</label>
                             <input type="datetime-local" id="instScheduledAt">
                         </div>
@@ -4240,10 +4284,10 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             // Debounce search
             searchTimeout = setTimeout(async () => {
                 try {
-                    // Search in кондиционеры table based on your schema
+                    // Search in quarter_2026 table first
                     const { data: addresses, error } = await supabase
-                        .from('conditioners') // Table name might need adjustment
-                        .select('adres_razmeshcheniya, naimenovanie_sk, rayon, tip, servisnyy_id')
+                        .from('quarter_2026')
+                        .select('*')
                         .ilike('adres_razmeshcheniya', `%${query}%`)
                         .limit(10);
                     
@@ -4259,13 +4303,14 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                     suggestionsDiv.innerHTML = `
                         <div style="position:absolute;top:100%;left:0;right:0;background:var(--secondary);border:1px solid var(--border);border-radius:8px;z-index:1000;max-height:300px;overflow-y:auto;box-shadow:var(--glow-cyan)">
                             ${addresses.map(addr => `
-                                <div onclick="selectAddress('${addr.adres_razmeshcheniya}', '${addr.naimenovanie_sk || ''}', '${addr.rayon || ''}')"
+                                <div onclick="fillInstallationFields(${JSON.stringify(addr).replace(/'/g, "&apos;")}); document.getElementById('instAddress').value='${addr.adres_razmeshcheniya}'; document.getElementById('addressSuggestions').innerHTML = '';"
                                      style="padding:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s"
                                      onmouseover="this.style.background='rgba(0,217,255,0.1)'"
                                      onmouseout="this.style.background='transparent'">
                                     <div style="font-weight:600;color:var(--accent)">${addr.adres_razmeshcheniya}</div>
                                     ${addr.naimenovanie_sk ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${addr.naimenovanie_sk}</div>` : ''}
                                     ${addr.rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${addr.rayon}</div>` : ''}
+                                    ${addr.servisnyy_id ? `<div style="font-size:11px;color:var(--text-muted)">ID: ${addr.servisnyy_id}</div>` : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -4289,6 +4334,23 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
         };
         
+        // Fill installation fields from quarter_2026 or conditioners table
+        window.fillInstallationFields = function(data) {
+            document.getElementById('instIdPloshadki').value = data.id_ploshadki || '';
+            document.getElementById('instServisnyyId').value = data.servisnyy_id || '';
+            document.getElementById('instRayon').value = data.rayon || '';
+            document.getElementById('instIdSk').value = data.id_sk || '';
+            document.getElementById('instNaimenovanieSk').value = data.naimenovanie_sk || '';
+            document.getElementById('instStatusOborudovaniya').value = data.status_oborudovaniya || '';
+            document.getElementById('instTipSkPoDogovoru').value = data.tip_sk_po_dogovoru || '';
+            
+            // Convert planovaya_data (integer) to date string
+            if (data.planovaya_data_1_kv_2026) {
+                const date = new Date(data.planovaya_data_1_kv_2026);
+                document.getElementById('instPlanovayaData').value = date.toLocaleDateString('ru-RU');
+            }
+        };
+        
         // Close suggestions when clicking outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('#instAddress') && !e.target.closest('#addressSuggestions')) {
@@ -4305,24 +4367,49 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const scheduled_at = document.getElementById('instScheduledAt').value;
             const status = document.getElementById('instStatus').value;
             
+            // Get additional fields from quarter_2026
+            const id_ploshadki = document.getElementById('instIdPloshadki').value;
+            const servisnyy_id = document.getElementById('instServisnyyId').value;
+            const rayon = document.getElementById('instRayon').value;
+            const id_sk = document.getElementById('instIdSk').value;
+            const naimenovanie_sk = document.getElementById('instNaimenovanieSk').value;
+            const status_oborudovaniya = document.getElementById('instStatusOborudovaniya').value;
+            const tip_sk_po_dogovoru = document.getElementById('instTipSkPoDogovoru').value;
+            const planovaya_data_str = document.getElementById('instPlanovayaData').value;
+            
             if (!title) {
                 showToast('Введите название монтажа');
                 return;
             }
             
             try {
+                const installationData = {
+                    title,
+                    description,
+                    project_id: project_id || null,
+                    assignee_id: assignee_id || null,
+                    address,
+                    scheduled_at: scheduled_at || null,
+                    status,
+                    created_by: currentUserProfile?.id
+                };
+                
+                // Add quarter_2026 fields if they exist
+                if (id_ploshadki) installationData.id_ploshadki = parseInt(id_ploshadki);
+                if (servisnyy_id) installationData.servisnyy_id = servisnyy_id;
+                if (rayon) installationData.rayon = rayon;
+                if (id_sk) installationData.id_sk = parseInt(id_sk);
+                if (naimenovanie_sk) installationData.naimenovanie_sk = naimenovanie_sk;
+                if (status_oborudovaniya) installationData.status_oborudovaniya = status_oborudovaniya;
+                if (tip_sk_po_dogovoru) installationData.tip_sk_po_dogovoru = parseInt(tip_sk_po_dogovoru);
+                if (planovaya_data_str) {
+                    const planovaya_date = new Date(planovaya_data_str);
+                    installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
+                }
+                
                 const { error } = await supabase
                     .from('installations')
-                    .insert([{
-                        title,
-                        description,
-                        project_id: project_id || null,
-                        assignee_id: assignee_id || null,
-                        address,
-                        scheduled_at: scheduled_at || null,
-                        status,
-                        created_by: currentUserProfile?.id
-                    }]);
+                    .insert([installationData]);
                 
                 if (error) throw error;
                 
