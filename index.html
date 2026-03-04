@@ -1483,11 +1483,68 @@
                 if (permission === 'granted') {
                     console.log('Notification permission granted');
                     await saveNotificationPermission(permission);
+                    await registerServiceWorkerAndSubscribe();
                 }
             } else if (Notification.permission === 'granted') {
                 console.log('Notifications already enabled');
                 await saveNotificationPermission('granted');
+                await registerServiceWorkerAndSubscribe();
             }
+        }
+        
+        // Register service worker and subscribe to push notifications
+        async function registerServiceWorkerAndSubscribe() {
+            try {
+                // Register service worker
+                const registration = await navigator.serviceWorker.register('/service-worker.js');
+                console.log('Service Worker registered:', registration);
+                
+                // Subscribe to push notifications
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array('YOUR_VAPID_PUBLIC_KEY_HERE')
+                });
+                
+                // Save subscription to database
+                await savePushSubscription(subscription);
+                
+                console.log('Push subscription saved:', subscription);
+            } catch (error) {
+                console.error('Error registering service worker or subscribing:', error);
+            }
+        }
+        
+        // Save push subscription to database
+        async function savePushSubscription(subscription) {
+            try {
+                const { error } = await supabase
+                    .from('user_push_subscriptions')
+                    .upsert({
+                        user_id: currentUserProfile?.id,
+                        endpoint: subscription.endpoint,
+                        p256dh: subscription.keys.p256dh,
+                        auth: subscription.keys.auth
+                    });
+                
+                if (error) throw error;
+                console.log('Push subscription saved to DB');
+            } catch (error) {
+                console.error('Error saving push subscription:', error);
+            }
+        }
+        
+        // Helper function for VAPID key conversion
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
         }
         
         // Save notification permission to user profile
@@ -1503,53 +1560,65 @@
         }
         
         // Send notification to user when assigned to a task
-        async function notifyUserAssignedToTask(taskTitle, assigneeName, creatorName) {
-            // Check if notifications are supported
-            if (!('Notification' in window)) {
-                console.log('Notifications not supported');
+        async function notifyUserAssignedToTask(taskId, assigneeId, assigneeName, creatorName) {
+            console.log('Sending notification for task', taskId, 'to assignee', assigneeId);
+            
+            // Get task details
+            const { data: task } = await supabase
+                .from('tasks')
+                .select('title')
+                .eq('id', taskId)
+                .single();
+            
+            if (!task) {
+                console.error('Task not found:', taskId);
                 return;
             }
             
-            // Request permission if not granted
-            if (Notification.permission !== 'granted') {
+            // 1. Show local notification for current user (creator/manager)
+            if ('Notification' in window && Notification.permission === 'granted') {
                 try {
-                    const permission = await Notification.requestPermission();
-                    if (permission !== 'granted') {
-                        console.log('Notification permission denied');
-                        return;
-                    }
+                    const notification = new Notification('📋 Новая задача!', {
+                        body: `Задача назначена: ${task.title}\nИсполнитель: ${assigneeName}`,
+                        icon: '/icon-192.png',
+                        badge: '/icon-192.png',
+                        tag: 'task-created-' + Date.now(),
+                        requireInteraction: true,
+                        silent: false
+                    });
+                    
+                    notification.onclick = function() {
+                        window.focus();
+                        navigate('tasks');
+                        notification.close();
+                    };
+                    
+                    setTimeout(() => notification.close(), 5000);
+                    console.log('Local notification shown for creator');
                 } catch (error) {
-                    console.error('Error requesting notification permission:', error);
-                    return;
+                    console.error('Error showing local notification:', error);
                 }
             }
             
-            // Show browser notification
+            // 2. Save to notification queue - assignee will see it when they log in
             try {
-                const notification = new Notification('📋 Новая задача!', {
-                    body: `Вас назначили на задачу: ${taskTitle}\nСоздал: ${creatorName}`,
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
-                    tag: 'task-assigned-' + Date.now(),
-                    requireInteraction: true,
-                    silent: false
-                });
+                const { error } = await supabase
+                    .from('notification_queue')
+                    .insert({
+                        user_id: assigneeId,
+                        title: '📋 Вас назначили на задачу!',
+                        body: `Задача: ${task.title}\nСоздал: ${creatorName}`,
+                        type: 'task_assigned',
+                        sent: false
+                    });
                 
-                // Click notification to navigate to task
-                notification.onclick = function() {
-                    window.focus();
-                    navigate('tasks');
-                    notification.close();
-                };
+                if (error) throw error;
+                console.log('Notification saved to queue for assignee:', assigneeId);
                 
-                // Auto-close after 5 seconds
-                setTimeout(() => {
-                    notification.close();
-                }, 5000);
-                
-                console.log('Notification shown for task:', taskTitle);
+                // Show toast to creator that notification was sent
+                showToast(`Уведомление отправлено исполнителю: ${assigneeName}`);
             } catch (error) {
-                console.error('Error showing notification:', error);
+                console.error('Error saving notification for assignee:', error);
             }
         }
         
@@ -1811,6 +1880,55 @@
                 setTimeout(() => {
                     showToast('🔔 Разрешите уведомления для получения задач', 6000);
                 }, 2000);
+            }
+            
+            // Check and show pending notifications for current user
+            checkAndShowPendingNotifications();
+        }
+        
+        // Check for pending notifications from notification_queue
+        async function checkAndShowPendingNotifications() {
+            try {
+                const { data: notifications, error } = await supabase
+                    .from('notification_queue')
+                    .select('*')
+                    .eq('user_id', currentUserProfile?.id)
+                    .eq('sent', false)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) throw error;
+                
+                if (notifications && notifications.length > 0) {
+                    // Show latest notification
+                    const latestNotif = notifications[0];
+                    
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        const notification = new Notification(latestNotif.title, {
+                            body: latestNotif.body,
+                            icon: '/icon-192.png',
+                            badge: '/icon-192.png',
+                            tag: 'pending-' + Date.now(),
+                            requireInteraction: true
+                        });
+                        
+                        notification.onclick = function() {
+                            window.focus();
+                            navigate('tasks');
+                            notification.close();
+                        };
+                    }
+                    
+                    // Mark as sent
+                    await supabase
+                        .from('notification_queue')
+                        .update({ sent: true })
+                        .eq('id', latestNotif.id);
+                    
+                    console.log('Shown pending notification:', latestNotif);
+                }
+            } catch (error) {
+                console.error('Error checking pending notifications:', error);
             }
         }
         
@@ -2967,12 +3085,12 @@ const buttons = [
                 if (newAssigneeId && newAssigneeId !== previousAssigneeId) {
                     const { data: assigneeUser } = await supabase
                         .from('users')
-                        .select('name')
+                        .select('id, name')
                         .eq('id', newAssigneeId)
                         .single();
                     
                     const creatorName = currentUserProfile?.name || 'Руководитель';
-                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                    await notifyUserAssignedToTask(taskId, assigneeUser?.id, assigneeUser?.name || 'Исполнитель', creatorName);
                 }
 
                 closeModal();
@@ -3898,15 +4016,16 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 
                 // Send notification if assignee was selected
                 if (assignee_id) {
-                    // Get assignee name and creator name for notification
+                    // Get assignee details for notification
                     const { data: assigneeUser } = await supabase
                         .from('users')
-                        .select('name')
+                        .select('id, name')
                         .eq('id', assignee_id)
                         .single();
                     
                     const creatorName = currentUserProfile?.name || 'Руководитель';
-                    await notifyUserAssignedToTask(title, assigneeUser?.name || 'Исполнитель', creatorName);
+                    // Pass task ID instead of title for proper notification
+                    await notifyUserAssignedToTask(data.id, assigneeUser?.id, assigneeUser?.name || 'Исполнитель', creatorName);
                 }
                 
                 closeModal();
@@ -3956,7 +4075,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         </div>
                         <div class="form-group">
                             <label>Адрес</label>
-                            <input type="text" id="instAddress" placeholder="Адрес монтажа">
+                            <input type="text" id="instAddress" placeholder="Начните вводить адрес..." oninput="searchAddresses(this.value)">
+                            <div id="addressSuggestions" style="position:relative;"></div>
                         </div>
                         <div class="form-group">
                             <label>Дата и время</label>
@@ -3978,6 +4098,75 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 });
             });
         };
+        
+        // Address search function with intelligent autocomplete
+        let searchTimeout = null;
+        window.searchAddresses = async function(query) {
+            clearTimeout(searchTimeout);
+            
+            if (!query || query.length < 2) {
+                document.getElementById('addressSuggestions').innerHTML = '';
+                return;
+            }
+            
+            // Debounce search
+            searchTimeout = setTimeout(async () => {
+                try {
+                    // Search in кондиционеры table based on your schema
+                    const { data: addresses, error } = await supabase
+                        .from('conditioners') // Table name might need adjustment
+                        .select('adres_razmeshcheniya, naimenovanie_sk, rayon, tip, servisnyy_id')
+                        .ilike('adres_razmeshcheniya', `%${query}%`)
+                        .limit(10);
+                    
+                    if (error) throw error;
+                    
+                    const suggestionsDiv = document.getElementById('addressSuggestions');
+                    
+                    if (!addresses || addresses.length === 0) {
+                        suggestionsDiv.innerHTML = '';
+                        return;
+                    }
+                    
+                    suggestionsDiv.innerHTML = `
+                        <div style="position:absolute;top:100%;left:0;right:0;background:var(--secondary);border:1px solid var(--border);border-radius:8px;z-index:1000;max-height:300px;overflow-y:auto;box-shadow:var(--glow-cyan)">
+                            ${addresses.map(addr => `
+                                <div onclick="selectAddress('${addr.adres_razmeshcheniya}', '${addr.naimenovanie_sk || ''}', '${addr.rayon || ''}')"
+                                     style="padding:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s"
+                                     onmouseover="this.style.background='rgba(0,217,255,0.1)'"
+                                     onmouseout="this.style.background='transparent'">
+                                    <div style="font-weight:600;color:var(--accent)">${addr.adres_razmeshcheniya}</div>
+                                    ${addr.naimenovanie_sk ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${addr.naimenovanie_sk}</div>` : ''}
+                                    ${addr.rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${addr.rayon}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('Address search error:', error);
+                }
+            }, 300);
+        };
+        
+        window.selectAddress = function(address, skName, rayon) {
+            document.getElementById('instAddress').value = address;
+            document.getElementById('addressSuggestions').innerHTML = '';
+            
+            // Optionally add SK name to description
+            if (skName) {
+                const descTextarea = document.getElementById('instDescription');
+                if (!descTextarea.value.includes(skName)) {
+                    descTextarea.value += (descTextarea.value ? '\n' : '') + 'СК: ' + skName;
+                }
+            }
+        };
+        
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#instAddress') && !e.target.closest('#addressSuggestions')) {
+                document.getElementById('addressSuggestions').innerHTML = '';
+            }
+        });
         
         window.createInstallation = async function() {
             const title = document.getElementById('instTitle').value;
