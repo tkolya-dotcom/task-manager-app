@@ -8,6 +8,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Планировщик</title>
     <link rel="manifest" href="manifest.json">
+    <!-- OneSignal Push Notifications -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: "62869aa0-7f0e-48b7-a2c3-2172de232257",
+            });
+        });
+    </script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1484,11 +1494,47 @@
                     console.log('Notification permission granted');
                     await saveNotificationPermission(permission);
                     await registerServiceWorkerAndSubscribe();
+                    await initOneSignal();
                 }
             } else if (Notification.permission === 'granted') {
                 console.log('Notifications already enabled');
                 await saveNotificationPermission('granted');
                 await registerServiceWorkerAndSubscribe();
+                await initOneSignal();
+            }
+        }
+        
+        // Initialize OneSignal and save external user ID
+        async function initOneSignal() {
+            if (!window.OneSignalDeferred) {
+                console.log('OneSignal not loaded');
+                return;
+            }
+            
+            try {
+                OneSignalDeferred.push(async function(OneSignal) {
+                    // Wait for OneSignal to be ready
+                    await OneSignal.ready;
+                    
+                    // Get OneSignal subscription ID
+                    const subscription = await OneSignal.User.PushSubscription.getIdAsync();
+                    
+                    if (subscription && currentUserProfile?.id) {
+                        // Save to database
+                        const { error } = await supabase
+                            .from('users')
+                            .update({ onesignal_external_id: subscription })
+                            .eq('id', currentUserProfile.id);
+                        
+                        if (error) {
+                            console.error('Error saving OneSignal ID:', error);
+                        } else {
+                            console.log('OneSignal ID saved:', subscription);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing OneSignal:', error);
             }
         }
         
@@ -1547,6 +1593,50 @@
             return outputArray;
         }
         
+        // Send OneSignal notification to specific user
+        async function sendOneSignalNotification(userId, title, body) {
+            try {
+                // Get user's OneSignal external ID from database
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('onesignal_external_id')
+                    .eq('id', userId)
+                    .single();
+                
+                if (!userData?.onesignal_external_id) {
+                    console.log('User not subscribed to OneSignal:', userId);
+                    return;
+                }
+                
+                // Send notification via OneSignal REST API
+                const response = await fetch('https://onesignal.com/api/v1/notifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic YOUR_ONESIGNAL_REST_API_KEY'
+                    },
+                    body: JSON.stringify({
+                        app_id: '62869aa0-7f0e-48b7-a2c3-2172de232257',
+                        include_external_user_ids: [userData.onesignal_external_id],
+                        headings: { en: title },
+                        contents: { en: body },
+                        data: {
+                            type: 'task_assigned',
+                            user_id: userId
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('OneSignal notification sent successfully');
+                } else {
+                    console.error('OneSignal API error:', await response.text());
+                }
+            } catch (error) {
+                console.error('Error sending OneSignal notification:', error);
+            }
+        }
+        
         // Save notification permission to user profile
         async function saveNotificationPermission(permission) {
             try {
@@ -1600,7 +1690,19 @@
                 }
             }
             
-            // 2. Save to notification queue - assignee will see it when they log in
+            // 2. Send OneSignal push notification to assignee
+            if (window.OneSignalDeferred) {
+                try {
+                    // Try to send via OneSignal REST API
+                    await sendOneSignalNotification(assigneeId, '📋 Вас назначили на задачу!', `Задача: ${task.title}\nСоздал: ${creatorName}`);
+                    
+                    console.log('OneSignal notification queued for assignee:', assigneeId);
+                } catch (error) {
+                    console.error('Error sending OneSignal notification:', error);
+                }
+            }
+            
+            // 3. Save to notification queue - assignee will see it when they log in
             try {
                 const { error } = await supabase
                     .from('notification_queue')
@@ -2454,7 +2556,10 @@ const buttons = [
                     </div>
                     ${dueDateHtml}
                     ${descriptionHtml}
-                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button></div>` : ''}
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                        ${canEdit ? `<button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editTask('${task.id}')">✎</button>` : ''}
+                        ${isManager ? `<button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px;background:#ef4444;border:none;color:white" onclick="event.stopPropagation();deleteTask('${task.id}')">🗑</button>` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -2721,7 +2826,10 @@ const buttons = [
                         ${inst.address || ''} - ${date}
                     </div>
                     ${descriptionHtml}
-                    ${canEdit ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editInstallation('${inst.id}')">✎</button></div>` : ''}
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                        ${canEdit ? `<button class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:12px" onclick="event.stopPropagation();editInstallation('${inst.id}')">✎</button>` : ''}
+                        ${isManager ? `<button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px;background:#ef4444;border:none;color:white" onclick="event.stopPropagation();deleteInstallation('${inst.id}')">🗑</button>` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -3095,6 +3203,26 @@ const buttons = [
 
                 closeModal();
                 showToast('Задача обновлена');
+                renderTasks(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.deleteTask = async function(taskId) {
+            if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('tasks')
+                    .delete()
+                    .eq('id', taskId);
+                
+                if (error) throw error;
+                
+                showToast('Задача удалена');
                 renderTasks(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
@@ -4212,6 +4340,26 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 
                 closeModal();
                 showToast('Монтаж создан');
+                renderInstallations(document.getElementById('content'));
+            } catch (error) {
+                showToast('Ошибка: ' + error.message);
+            }
+        };
+        
+        window.deleteInstallation = async function(instId) {
+            if (!confirm('Вы уверены, что хотите удалить этот монтаж?')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('installations')
+                    .delete()
+                    .eq('id', instId);
+                
+                if (error) throw error;
+                
+                showToast('Монтаж удален');
                 renderInstallations(document.getElementById('content'));
             } catch (error) {
                 showToast('Ошибка: ' + error.message);
