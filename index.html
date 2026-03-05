@@ -4887,10 +4887,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const startDate = new Date(year, month, 1).toISOString();
             const endDate = new Date(year, month + 1, 0).toISOString();
             
-            const [tasks, installations] = await Promise.all([
-                supabase.from('tasks').select('id, title, status, due_date').gte('due_date', startDate).lte('due_date', endDate),
-                supabase.from('installations').select('id, title, status, scheduled_at').gte('scheduled_at', startDate).lte('scheduled_at', endDate)
-            ]);
+            // Get all users for filter
+            const { data: users } = await supabase.from('users').select('id, name');
             
             let html = `
                 <h2 style="margin-bottom: 16px">Календарь</h2>
@@ -4946,6 +4944,15 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             html += `
                     </div>
                 </div>
+                
+                <!-- Filter by executor -->
+                <div class="card" style="margin-top: 16px;">
+                    <h3 class="section-title">Фильтр по исполнителю</h3>
+                    <select id="calendarExecutorFilter" class="form-group" onchange="applyCalendarExecutorFilter()" style="width: 100%">
+                        <option value="all">Все исполнители</option>
+                        ${(users || []).map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+                    </select>
+                </div>
             `;
             
             content.innerHTML = html;
@@ -4956,35 +4963,70 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             renderContent();
         };
         
+        window.applyCalendarExecutorFilter = async function() {
+            const executorId = document.getElementById('calendarExecutorFilter').value;
+            console.log('Filter by executor:', executorId);
+            
+            // Re-render calendar with filter
+            await renderCalendar(document.getElementById('content'));
+        };
+        
         window.showCalendarDay = async function(dateStr) {
+            console.log('Showing day:', dateStr);
+            
+            // Get selected executor filter
+            const executorId = document.getElementById('calendarExecutorFilter')?.value || 'all';
+            
+            // Get full date range for the day
+            const dayStart = new Date(dateStr).toISOString();
+            const dayEnd = new Date(new Date(dateStr).setDate(new Date(dateStr).getDate() + 1)).toISOString();
+            
+            // Build query with optional executor filter
+            let tasksQuery = supabase.from('tasks').select('*');
+            let installationsQuery = supabase.from('installations').select('*');
+            
+            if (executorId !== 'all') {
+                tasksQuery = tasksQuery.eq('assignee_id', executorId);
+                installationsQuery = installationsQuery.eq('assignee_id', executorId);
+            }
+            
             const [tasks, installations] = await Promise.all([
-                supabase.from('tasks').select('*').like('due_date', dateStr + '%'),
-                supabase.from('installations').select('*').like('scheduled_at', dateStr + '%')
+                tasksQuery.gte('due_date', dayStart).lt('due_date', dayEnd),
+                installationsQuery.gte('scheduled_at', dayStart).lt('scheduled_at', dayEnd)
             ]);
+            
+            console.log('Tasks:', tasks.data?.length, 'Installations:', installations.data?.length);
             
             let html = `
                 <button class="btn btn-outline btn-sm" onclick="navigate('calendar')" style="margin-bottom: 16px">← Назад к календарю</button>
-                <h2 style="margin-bottom: 16px">${new Date(dateStr).toLocaleDateString('ru-RU')}</h2>
+                <h2 style="margin-bottom: 16px">${new Date(dateStr).toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h2>
             `;
             
             if (tasks.data && tasks.data.length > 0) {
-                html += `<h3 class="section-title">Задачи</h3>`;
+                html += `<h3 class="section-title">Задачи (${tasks.data.length})</h3>`;
                 tasks.data.forEach(task => {
                     html += `
-                        <div class="calendar-item" onclick="showTaskDetail('${task.id}')">
-                            <div class="list-item-title">${task.title}</div>
-                            <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
+                        <div class="card card-clickable" onclick="window.showTaskDetail('${task.id}')">
+                            <div class="list-item-header">
+                                <div class="list-item-title">${task.title}</div>
+                                <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
+                            </div>
+                            ${task.users?.name ? `<div class="list-item-subtitle">${task.users.name}</div>` : ''}
                         </div>
                     `;
                 });
             }
             
             if (installations.data && installations.data.length > 0) {
-                html += `<h3 class="section-title">Монтажи</h3>`;
+                html += `<h3 class="section-title">Монтажи (${installations.data.length})</h3>`;
                 installations.data.forEach(inst => {
                     html += `
-                        <div class="calendar-item installation" onclick="window.showInstallationDetail('${inst.id}')">
-                            <div class="list-item-title">${inst.title}</div>
+                        <div class="card card-clickable" onclick="window.showInstallationDetail('${inst.id}')">
+                            <div class="list-item-header">
+                                <div class="list-item-title">${inst.title}</div>
+                                <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
+                            </div>
+                            ${inst.address ? `<div class="list-item-subtitle">${inst.address}</div>` : ''}
                             <div class="calendar-item-time">${inst.scheduled_at ? new Date(inst.scheduled_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
                         </div>
                     `;
@@ -4992,7 +5034,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
             
             if ((!tasks.data || tasks.data.length === 0) && (!installations.data || installations.data.length === 0)) {
-                html += '<div class="empty-state"><p>Нет запланированных задач</p></div>';
+                html += '<div class="empty-state"><p>Нет запланированных задач и монтажей</p></div>';
             }
             
             document.getElementById('content').innerHTML = html;
