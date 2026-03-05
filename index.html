@@ -2981,13 +2981,13 @@ const buttons = [
                     ${inst.id_ploshadki ? `<div class="detail-meta"><strong>ID площадки:</strong> ${inst.id_ploshadki}</div>` : ''}
                     ${inst.servisnyy_id ? `<div class="detail-meta"><strong>Сервисный ID:</strong> ${inst.servisnyy_id}</div>` : ''}
                     ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
-                    ${inst.id_sk ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk}</div>` : ''}
+                    ${(inst.id_sk || inst.id_sk1) ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk || inst.id_sk1}</div>` : ''}
                     
                     <!-- Наименование СК (марка/модель) -->
-                    ${inst.naimenovanie_sk ? `<div class="detail-meta" style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);"><strong>Марка/Модель СК:</strong><br>${inst.naimenovanie_sk}</div>` : ''}
+                    ${(inst.naimenovanie_sk || inst.naimenovanie_sk1) ? `<div class="detail-meta" style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);"><strong>Марка/Модель СК:</strong><br>${inst.naimenovanie_sk || inst.naimenovanie_sk1}</div>` : ''}
                     
                     <!-- Тип по договору -->
-                    ${inst.tip_sk_po_dogovoru ? `<div class="detail-meta" style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);"><strong>Тип по договору:</strong><br>${inst.tip_sk_po_dogovoru}</div>` : ''}
+                    ${(inst.tip_sk_po_dogovoru || inst.tip_sk_po_dogovoru1) ? `<div class="detail-meta" style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);"><strong>Тип по договору:</strong><br>${inst.tip_sk_po_dogovoru || inst.tip_sk_po_dogovoru1}</div>` : ''}
                     
                     ${inst.status_oborudovaniya ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya}</div>` : ''}
                     ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU')}</div>` : ''}
@@ -3522,7 +3522,7 @@ const buttons = [
                 return;
             }
             
-            // Get all archived items (no time limit)
+
             const [archivedTasks, archivedInstallations] = await Promise.all([
                 supabase.from('tasks').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false }),
                 supabase.from('installations').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false })
@@ -5330,11 +5330,17 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             <li>Утверждайте заявки от исполнителей</li>
                             <li>Отслеживайте статусы закупок</li>
                         </ul>
+
+                        <h4 style="color: var(--accent); margin-top: 16px;">🔔 Уведомления</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Разрешите уведомления для получения новых задач</li>
+                            <li>Уведомления приходят при назначении на задачу/монтаж</li>
+                        </ul>
                     </div>
                 `;
             }
             
-            if (role === 'worker' || role === 'deputy_head' || role === 'manager') {
+            if (role === 'worker' ||  role === 'manager') {
                 html += `
                     <div class="card">
                         <h3 class="section-title">Инструкция исполнителя</h3>
