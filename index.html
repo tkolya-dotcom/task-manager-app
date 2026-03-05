@@ -4553,14 +4553,17 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const status = document.getElementById('instStatus').value;
             
             // Get additional fields from quarter_2026
-            const id_ploshadki = document.getElementById('instIdPloshadki').value;
-            const servisnyy_id = document.getElementById('instServisnyyId').value;
-            const rayon = document.getElementById('instRayon').value;
-            const id_sk = document.getElementById('instIdSk').value;
-            const naimenovanie_sk = document.getElementById('instNaimenovanieSk').value;
-            const status_oborudovaniya = document.getElementById('instStatusOborudovaniya').value;
-            const tip_sk_po_dogovoru = document.getElementById('instTipSkPoDogovoru').value;
-            const planovaya_data_str = document.getElementById('instPlanovayaData').value;
+            const id_ploshadki = document.getElementById('instIdPloshadki')?.value;
+            const servisnyy_id = document.getElementById('instServisnyyId')?.value;
+            const rayon = document.getElementById('instRayon')?.value;
+            
+            // Get SK fields (may be in dynamic rows)
+            const id_sk = document.getElementById('instIdSk')?.value;
+            const naimenovanie_sk = document.getElementById('instNaimenovanieSk')?.value;
+            const status_oborudovaniya = document.getElementById('instStatusOborudovaniya')?.value;
+            const tip_sk_po_dogovoru = document.getElementById('instTipSkPoDogovoru')?.value;
+            
+            const planovaya_data_str = document.getElementById('instPlanovayaData')?.value;
             
             if (!title) {
                 showToast('Введите название монтажа');
@@ -4587,16 +4590,21 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 if (naimenovanie_sk) installationData.naimenovanie_sk = naimenovanie_sk;
                 if (status_oborudovaniya) installationData.status_oborudovaniya = status_oborudovaniya;
                 if (tip_sk_po_dogovoru) installationData.tip_sk_po_dogovoru = parseInt(tip_sk_po_dogovoru);
-                if (planovaya_data_str) {
+                if (planovaya_data_str && !isNaN(new Date(planovaya_data_str).getTime())) {
                     const planovaya_date = new Date(planovaya_data_str);
                     installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
                 }
                 
-                const { error } = await supabase
+                console.log('Creating installation:', installationData);
+                
+                const { data, error } = await supabase
                     .from('installations')
-                    .insert([installationData]);
+                    .insert([installationData])
+                    .select();
                 
                 if (error) throw error;
+                
+                console.log('Installation created:', data);
                 
                 // Send notification if assignee was selected
                 if (assignee_id) {
@@ -4612,8 +4620,15 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 
                 closeModal();
                 showToast('Монтаж создан');
-                renderInstallations(document.getElementById('content'));
+                
+                // Refresh current view
+                if (currentView === 'installations') {
+                    await renderInstallations(document.getElementById('content'));
+                } else if (currentView === 'projects' && project_id) {
+                    await showProjectDetail(project_id);
+                }
             } catch (error) {
+                console.error('Installation creation error:', error);
                 showToast('Ошибка: ' + error.message);
             }
         };
