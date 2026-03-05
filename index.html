@@ -24,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ========================================
-           CSS VARIABLES - Cyberpunk/JARVIS/Matrix Theme
+           CSS VARIABLES - Cyberpunk/Matrix Theme
            ======================================== */
         :root {
             --primary: #0A0A0F;
@@ -1359,11 +1359,11 @@
             <div id="loginForm">
                 <div class="form-group">
                     <label>EMAIL</label>
-                    <input type="email" id="loginEmail" placeholder="сюда напиши почту">
+                    <input type="email" id="loginEmail" placeholder="email@example.com">
                 </div>
                 <div class="form-group">
                     <label>ПАРОЛЬ</label>
-                    <input type="password" id="loginPassword" placeholder="а сюда пароль">
+                    <input type="password" id="loginPassword" placeholder="********">
                 </div>
                 <button class="btn" onclick="login()">ВОЙТИ</button>
             </div>
@@ -1376,7 +1376,7 @@
                 </div>
                 <div class="form-group">
                     <label>EMAIL</label>
-                    <input type="email" id="registerEmail" placeholder="сюда напиши почту">
+                    <input type="email" id="registerEmail" placeholder="email@example.com">
                 </div>
                 <div class="form-group">
                     <label>РОЛЬ</label>
@@ -1388,7 +1388,7 @@
                 </div>
                 <div class="form-group">
                     <label>ПАРОЛЬ</label>
-                    <input type="password" id="registerPassword" placeholder="а сюда пароль">
+                    <input type="password" id="registerPassword" placeholder="********">
                 </div>
                 <button class="btn" onclick="register()">ЗАРЕГИСТРИРОВАТЬСЯ</button>
             </div>
@@ -4214,42 +4214,34 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Адрес</label>
+                            <label>Адрес (поиск)</label>
                             <input type="text" id="instAddress" placeholder="Начните вводить адрес..." oninput="searchAddresses(this.value)">
                             <div id="addressSuggestions" style="position:relative;"></div>
                         </div>
-                        <div class="form-group">
-                            <label>ID площадки</label>
-                            <input type="text" id="instIdPloshadki" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                        
+                        <!-- SK Fields Container - will be populated dynamically -->
+                        <div id="skFieldsContainer">
+                            <div class="form-group">
+                                <label>ID площадки</label>
+                                <input type="text" id="instIdPloshadki" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                            </div>
+                            <div class="form-group">
+                                <label>Сервисный ID</label>
+                                <input type="text" id="instServisnyyId" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                            </div>
+                            <div class="form-group">
+                                <label>Район</label>
+                                <input type="text" id="instRayon" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                            </div>
+                            <div class="form-group">
+                                <label>Плановая дата 1 кв. 2026</label>
+                                <input type="text" id="instPlanovayaData" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
+                            </div>
+                            
+                            <!-- Dynamic SK rows container -->
+                            <div id="skRowsContainer"></div>
                         </div>
-                        <div class="form-group">
-                            <label>Сервисный ID</label>
-                            <input type="text" id="instServisnyyId" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>Район</label>
-                            <input type="text" id="instRayon" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>ID СК</label>
-                            <input type="text" id="instIdSk" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>Наименование СК</label>
-                            <input type="text" id="instNaimenovanieSk" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>Статус оборудования</label>
-                            <input type="text" id="instStatusOborudovaniya" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>Тип СК по договору</label>
-                            <input type="text" id="instTipSkPoDogovoru" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
-                        <div class="form-group">
-                            <label>Плановая дата 1 кв. 2026</label>
-                            <input type="text" id="instPlanovayaData" readonly style="background:rgba(255,255,255,0.05);cursor:not-allowed">
-                        </div>
+                        
                         <div class="form-group">
                             <label>Дата и время</label>
                             <input type="datetime-local" id="instScheduledAt">
@@ -4284,13 +4276,24 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             // Debounce search
             searchTimeout = setTimeout(async () => {
                 try {
-                    const { data: addresses, error } = await supabase
-                        .from('quarter_2026')
+                    // Search in both atss_q1_2026 and kasip_azm_q1_2026 tables
+                    const { data: addresses1, error: error1 } = await supabase
+                        .from('atss_q1_2026')
                         .select('*')
                         .ilike('adres_razmeshcheniya', `%${query}%`)
-                        .limit(10);
+                        .limit(5);
                     
-                    if (error) throw error;
+                    const { data: addresses2, error: error2 } = await supabase
+                        .from('kasip_azm_q1_2026')
+                        .select('*')
+                        .ilike('adres_raspolozheniya', `%${query}%`)
+                        .limit(5);
+                    
+                    if (error1) throw error1;
+                    if (error2) throw error2;
+                    
+                    // Combine results
+                    const addresses = [...(addresses1 || []), ...(addresses2 || [])];
                     
                     const suggestionsDiv = document.getElementById('addressSuggestions');
                     
@@ -4303,14 +4306,19 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                     
                     addresses.forEach((addr, index) => {
                         const addrId = 'addr-' + index + '-' + Date.now();
+                        const address = addr.adres_razmeshcheniya || addr.adres_raspolozheniya || '';
+                        const skName = addr.naimenovanie_sk || '';
+                        const rayon = addr.rayon || '';
+                        const servisnyyId = addr.servisnyy_id || '';
+                        
                         html += `
                             <div id="${addrId}" style="padding:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.2s"
                                  onmouseover="this.style.background='rgba(0,217,255,0.1)'"
                                  onmouseout="this.style.background='transparent'">
-                                <div style="font-weight:600;color:var(--accent)">${addr.adres_razmeshcheniya || ''}</div>
-                                ${addr.naimenovanie_sk ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${addr.naimenovanie_sk}</div>` : ''}
-                                ${addr.rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${addr.rayon}</div>` : ''}
-                                ${addr.servisnyy_id ? `<div style="font-size:11px;color:var(--text-muted)">ID: ${addr.servisnyy_id}</div>` : ''}
+                                <div style="font-weight:600;color:var(--accent)">${address}</div>
+                                ${skName ? `<div style="font-size:12px;color:var(--text-muted)">СК: ${skName}</div>` : ''}
+                                ${rayon ? `<div style="font-size:12px;color:var(--text-muted)">Район: ${rayon}</div>` : ''}
+                                ${servisnyyId ? `<div style="font-size:11px;color:var(--text-muted)">ID: ${servisnyyId}</div>` : ''}
                             </div>
                         `;
                         
@@ -4320,7 +4328,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             if (element) {
                                 element.onclick = function() {
                                     fillInstallationFields(addr);
-                                    document.getElementById('instAddress').value = addr.adres_razmeshcheniya || '';
+                                    document.getElementById('instAddress').value = address;
                                     document.getElementById('addressSuggestions').innerHTML = '';
                                 };
                             }
@@ -4349,24 +4357,114 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             }
         };
         
-        // Fill installation fields from quarter_2026 or conditioners table
+        // Fill installation fields from atss_q1_2026 or kasip_azm_q1_2026 tables
         window.fillInstallationFields = function(data) {
             console.log('Filling installation fields:', data);
             
             document.getElementById('instIdPloshadki').value = data.id_ploshadki || '';
             document.getElementById('instServisnyyId').value = data.servisnyy_id || '';
             document.getElementById('instRayon').value = data.rayon || '';
-            document.getElementById('instIdSk').value = data.id_sk || '';
-            document.getElementById('instNaimenovanieSk').value = data.naimenovanie_sk || '';
-            document.getElementById('instStatusOborudovaniya').value = data.status_oborudovaniya || '';
-            document.getElementById('instTipSkPoDogovoru').value = data.tip_sk_po_dogovoru || '';
             
+            // Clear previous SK rows
+            const container = document.getElementById('skRowsContainer');
+            if (container) {
+                container.innerHTML = '';
+            }
+            
+            // Collect all SKs from the address
+            const sks = [];
+            
+            // Check for ATSS format (id_sk1, id_sk2, etc.)
+            for (let i = 1; i <= 6; i++) {
+                const idSk = data[`id_sk${i}`];
+                const naimenovanie = data[`naimenovanie_sk${i}`];
+                const status = data[`status_oborudovaniya${i}`] || data[`status_sk${i}`];
+                const tip = data[`tip_sk_po_dogovoru${i}`];
+                
+                if (idSk || naimenovanie) {
+                    sks.push({
+                        id_sk: idSk,
+                        naimenovanie_sk: naimenovanie,
+                        status_oborudovaniya: status,
+                        tip_sk_po_dogovoru: tip,
+                        index: i
+                    });
+                }
+            }
+            
+            // Check for КАСИП АЗМ format (id_konditsionera1, id_konditsionera2, etc.)
+            if (sks.length === 0) {
+                for (let i = 1; i <= 6; i++) {
+                    const idCond = data[`id_konditsionera${i}`];
+                    const naimenovanie = data[`naimenovanie_sk${i}`];
+                    const status = data[`status_sk${i}`];
+                    const tip = data[`tip_sk_po_dogovoru${i}`];
+                    
+                    if (idCond || naimenovanie) {
+                        sks.push({
+                            id_sk: idCond,
+                            naimenovanie_sk: naimenovanie,
+                            status_oborudovaniya: status,
+                            tip_sk_po_dogovoru: tip,
+                            index: i
+                        });
+                    }
+                }
+            }
+            
+            // If no SKs found, use first SK fields as before
+            if (sks.length === 0) {
+                document.getElementById('instIdSk').value = data.id_sk1 || data.id_konditsionera1 || '';
+                document.getElementById('instNaimenovanieSk').value = data.naimenovanie_sk1 || '';
+                document.getElementById('instStatusOborudovaniya').value = data.status_oborudovaniya1 || data.status_sk1 || '';
+                document.getElementById('instTipSkPoDogovoru').value = data.tip_sk_po_dogovoru1 || '';
+            } else {
+                // Create dynamic rows for each SK
+                const skContainer = document.getElementById('skRowsContainer');
+                sks.forEach((sk, idx) => {
+                    const rowHtml = `
+                        <div class="sk-row" style="background:rgba(0,217,255,0.05);padding:12px;border-radius:8px;margin-bottom:12px">
+                            <div style="color:var(--accent);font-weight:600;margin-bottom:8px">СК #${sk.index}</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-muted)">ID СК</label>
+                                    <input type="text" id="sk_id_${idx}" value="${sk.id_sk || ''}" readonly style="width:100%;background:rgba(255,255,255,0.05);border:none;padding:6px;border-radius:4px">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-muted)">Наименование</label>
+                                    <input type="text" id="sk_name_${idx}" value="${sk.naimenovanie_sk || ''}" readonly style="width:100%;background:rgba(255,255,255,0.05);border:none;padding:6px;border-radius:4px">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-muted)">Статус</label>
+                                    <input type="text" id="sk_status_${idx}" value="${sk.status_oborudovaniya || ''}" readonly style="width:100%;background:rgba(255,255,255,0.05);border:none;padding:6px;border-radius:4px">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-muted)">Тип по договору</label>
+                                    <input type="text" id="sk_tip_${idx}" value="${sk.tip_sk_po_dogovoru || ''}" readonly style="width:100%;background:rgba(255,255,255,0.05);border:none;padding:6px;border-radius:4px">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    skContainer.insertAdjacentHTML('beforeend', rowHtml);
+                });
+            }
+            
+            // Plan dates - ATSS has planovaya_data_1_kv_2026, КАСИП АЗМ has plan_yanvar, plan_fevral, plan_mart
             if (data.planovaya_data_1_kv_2026) {
                 const date = new Date(data.planovaya_data_1_kv_2026);
                 document.getElementById('instPlanovayaData').value = date.toLocaleDateString('ru-RU');
+            } else if (data.plan_yanvar) {
+                const date = new Date(data.plan_yanvar);
+                document.getElementById('instPlanovayaData').value = 'Январь: ' + date.toLocaleDateString('ru-RU');
+            } else if (data.plan_fevral) {
+                const date = new Date(data.plan_fevral);
+                document.getElementById('instPlanovayaData').value = 'Февраль: ' + date.toLocaleDateString('ru-RU');
+            } else if (data.plan_mart) {
+                const date = new Date(data.plan_mart);
+                document.getElementById('instPlanovayaData').value = 'Март: ' + date.toLocaleDateString('ru-RU');
             }
             
-            console.log('Fields filled successfully');
+            console.log('Fields filled successfully, SK count:', sks.length);
         };
         
         // Close suggestions when clicking outside
