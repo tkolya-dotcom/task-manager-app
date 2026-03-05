@@ -2231,23 +2231,6 @@ const buttons = [
                         </div>
                     </div>
 
-                    <!-- Task Status Breakdown -->
-                    <div class="card">
-                        <h3 class="section-title">Статусы задач</h3>
-                        ${Object.entries(taskStatusCounts).map(([status, count]) => {
-                            const width = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
-                            return `
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <span style="min-width: 140px; font-size: 13px;">${getStatusLabel(status)}</span>
-                                    <div style="flex: 1; height: 20px; background: var(--secondary); border-radius: 10px; overflow: hidden;">
-                                        <div style="height: 100%; width: ${width}%; background: ${statusColors[status]}; border-radius: 10px; transition: width 0.3s ease;"></div>
-                                    </div>
-                                    <span style="min-width: 30px; text-align: right; font-weight: 500;">${count}</span>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-
                     <!-- Installation Status Breakdown -->
                     <div class="card">
                         <h3 class="section-title">Статусы монтажей</h3>
