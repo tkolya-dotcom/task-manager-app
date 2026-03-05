@@ -115,6 +115,105 @@ const InstallationDetail = () => {
           <p><strong>Адрес:</strong> {installation.address || '-'}</p>
           <p><strong>Создан:</strong> {new Date(installation.created_at).toLocaleDateString('ru-RU')}</p>
           
+          {/* SK Fields Display */}
+          {(installation.id_ploshadki || installation.servisnyy_id || installation.rayon || installation.id_sk1) && (
+            <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
+              <h4 style={{ marginTop: 0 }}>Информация о площадке (СК)</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {installation.id_ploshadki && (
+                  <p><strong>ID площадки:</strong> {installation.id_ploshadki}</p>
+                )}
+                {installation.servisnyy_id && (
+                  <p><strong>Сервисный ID:</strong> {installation.servisnyy_id}</p>
+                )}
+                {installation.rayon && (
+                  <p><strong>Район:</strong> {installation.rayon}</p>
+                )}
+                {installation.planovaya_data_1_kv_2026 && (
+                  <p><strong>Плановая дата 1 кв. 2026:</strong> {installation.planovaya_data_1_kv_2026}</p>
+                )}
+              </div>
+              
+              {/* SK1 */}
+              {installation.id_sk1 && (
+                <div style={{ marginTop: '15px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #1</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk1}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk1 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya1 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru1 || '-'}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* SK2 */}
+              {installation.id_sk2 && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #2</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk2}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk2 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya2 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru2 || '-'}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* SK3 */}
+              {installation.id_sk3 && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #3</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk3}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk3 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya3 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru3 || '-'}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* SK4 */}
+              {installation.id_sk4 && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #4</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk4}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk4 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya4 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru4 || '-'}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* SK5 */}
+              {installation.id_sk5 && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #5</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk5}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk5 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya5 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru5 || '-'}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* SK6 */}
+              {installation.id_sk6 && (
+                <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
+                  <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #6</h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <p><strong>ID СК:</strong> {installation.id_sk6}</p>
+                    <p><strong>Наименование (марка/модель):</strong> {installation.naimenovanie_sk6 || '-'}</p>
+                    <p><strong>Статус оборудования:</strong> {installation.status_oborudovaniya6 || '-'}</p>
+                    <p><strong>Тип по договору:</strong> {installation.tip_sk_po_dogovoru6 || '-'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           {canCreateRequest && (
             <button 
               className="btn btn-primary" 
