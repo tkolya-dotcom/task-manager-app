@@ -2957,6 +2957,14 @@ const buttons = [
                     <div class="detail-title">${inst.title}</div>
                     <div class="detail-meta"><strong>Проект:</strong> ${projectName}</div>
                     <div class="detail-meta"><strong>Адрес:</strong> ${inst.address || '-'}</div>
+                    ${inst.id_ploshadki ? `<div class="detail-meta"><strong>ID площадки:</strong> ${inst.id_ploshadki}</div>` : ''}
+                    ${inst.servisnyy_id ? `<div class="detail-meta"><strong>Сервисный ID:</strong> ${inst.servisnyy_id}</div>` : ''}
+                    ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
+                    ${inst.id_sk ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk}</div>` : ''}
+                    ${inst.naimenovanie_sk ? `<div class="detail-meta"><strong>Наименование СК:</strong> ${inst.naimenovanie_sk}</div>` : ''}
+                    ${inst.status_oborudovaniya ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya}</div>` : ''}
+                    ${inst.tip_sk_po_dogovoru ? `<div class="detail-meta"><strong>Тип по договору:</strong> ${inst.tip_sk_po_dogovoru}</div>` : ''}
+                    ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU')}</div>` : ''}
                     <div class="detail-meta"><strong>Дата:</strong> ${date}</div>
                     <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
                     <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span></div>
@@ -4905,6 +4913,23 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             // Get all users for filter
             const { data: users } = await supabase.from('users').select('id, name');
             
+            // Get tasks and installations for the month
+            const [monthTasks, monthInstallations] = await Promise.all([
+                supabase.from('tasks').select('id, title, status, due_date, assignee_id').gte('due_date', startDate).lte('due_date', endDate),
+                supabase.from('installations').select('id, title, status, scheduled_at, assignee_id').gte('scheduled_at', startDate).lte('scheduled_at', endDate)
+            ]);
+            
+            // Apply executor filter if selected
+            let filteredTasks = monthTasks.data;
+            let filteredInstallations = monthInstallations.data;
+            
+            // Get current filter value (if any)
+            const currentFilter = document.getElementById('calendarExecutorFilter')?.value || 'all';
+            if (currentFilter !== 'all') {
+                filteredTasks = monthTasks.data?.filter(t => t.assignee_id === currentFilter) || [];
+                filteredInstallations = monthInstallations.data?.filter(i => i.assignee_id === currentFilter) || [];
+            }
+            
             let html = `
                 <h2 style="margin-bottom: 16px">Календарь</h2>
                 <div class="calendar">
@@ -4938,8 +4963,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
                 
                 // Check for items on this day
-                const dayTasks = tasks.data?.filter(t => t.due_date && t.due_date.startsWith(dateStr)) || [];
-                const dayInstallations = installations.data?.filter(i => i.scheduled_at && i.scheduled_at.startsWith(dateStr)) || [];
+                let dayTasks = filteredTasks?.filter(t => t.due_date && t.due_date.startsWith(dateStr)) || [];
+                let dayInstallations = filteredInstallations?.filter(i => i.scheduled_at && i.scheduled_at.startsWith(dateStr)) || [];
                 const hasItems = dayTasks.length > 0 || dayInstallations.length > 0;
                 
                 html += `
