@@ -2675,13 +2675,22 @@ const buttons = [
             let statusOptions = ['new', 'planned', 'in_progress', 'waiting_materials', 'done', 'postponed']
                 .map(s => `<option value="${s}" ${task.status === s ? 'selected' : ''}>${getStatusLabel(s)}</option>`).join('');
             
+            // Get first line of description or truncate
+            let shortDesc = '';
+            if (task.description && task.description.trim() !== '') {
+                shortDesc = task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description;
+            }
+            
             let html = `
                 <button class="btn btn-outline btn-sm" onclick="navigate('tasks')" style="margin-bottom: 16px">← Назад</button>
                 <div class="detail-header">
                     <div class="detail-title">${task.title}</div>
-                    <div class="detail-meta">Проект: ${task.projects?.name || '-'}</div>
-                    <div class="detail-meta">Исполнитель: ${task.users?.name || 'Не назначен'}</div>
-                    ${task.status_changed_by ? `<div class="detail-meta">Статус изменён: ${task.status_changed_by?.name || 'Пользователь'} ${task.status_changed_at ? new Date(task.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
+                    <div class="detail-meta"><strong>Проект:</strong> ${projectName}</div>
+                    <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
+                    <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${task.status}">${getStatusLabel(task.status)}</span></div>
+                    ${task.due_date ? `<div class="detail-meta"><strong>Срок:</strong> ${new Date(task.due_date).toLocaleDateString('ru-RU')}</div>` : ''}
+                    ${task.status_changed_by ? `<div class="detail-meta"><strong>Статус изменён:</strong> ${task.status_changed_by?.name || 'Пользователь'} ${task.status_changed_at ? new Date(task.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
+                    <div class="detail-meta"><strong>ID:</strong> ${task.id}</div>
                 </div>
             `;
             
@@ -2708,15 +2717,15 @@ const buttons = [
             }
             
             if (prs && prs.length > 0) {
-                html += `<h3 class="section-title">Заявки на материалы</h3>`;
-                prs.forEach(pr => {
+                html += `<h3 class="section-title">Заявки на материалы (${prs.length})</h3>`;
+                prsWithDetails.forEach(pr => {
                     html += `
                         <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
                             <div class="list-item-header">
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
                             </div>
-                            <div class="list-item-subtitle">${pr.users?.name || ''}</div>
+                            <div class="list-item-subtitle">${pr.users?.name || ''} • ${new Date(pr.created_at).toLocaleDateString('ru-RU')}</div>
                         </div>
                     `;
                 });
@@ -2724,7 +2733,7 @@ const buttons = [
             
             const canCreatePR = isElevatedUser() || (String(task.assignee_id) === String(currentUserProfile?.id));
             if (canCreatePR) {
-                html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">Создать заявку на материалы</button>`;
+                html += `<button class="btn btn-success" onclick="showCreatePRModal('task', '${task.id}')">+ Создать заявку на материалы</button>`;
             }
             
             document.getElementById('content').innerHTML = html;
@@ -2949,10 +2958,13 @@ const buttons = [
                 <button class="btn btn-outline btn-sm" onclick="navigate('installations')" style="margin-bottom: 16px">← Назад</button>
                 <div class="detail-header">
                     <div class="detail-title">${inst.title}</div>
-                    <div class="detail-meta">Проект: ${projectName}</div>
-                    <div class="detail-meta">Адрес: ${inst.address || '-'}</div>
-                    <div class="detail-meta">Дата: ${date}</div>
-                    <div class="detail-meta">Исполнитель: ${assigneeName}</div>
+                    <div class="detail-meta"><strong>Проект:</strong> ${projectName}</div>
+                    <div class="detail-meta"><strong>Адрес:</strong> ${inst.address || '-'}</div>
+                    <div class="detail-meta"><strong>Дата:</strong> ${date}</div>
+                    <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
+                    <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span></div>
+                    ${inst.status_changed_by ? `<div class="detail-meta"><strong>Статус изменён:</strong> ${inst.status_changed_by?.name || 'Пользователь'} ${inst.status_changed_at ? new Date(inst.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
+                    <div class="detail-meta"><strong>ID:</strong> ${inst.id}</div>
                 </div>
             `;
 
@@ -2989,7 +3001,7 @@ const buttons = [
             }
 
             if (prsWithDetails && prsWithDetails.length > 0) {
-                html += `<h3 class="section-title">Заявки на материалы</h3>`;
+                html += `<h3 class="section-title">Заявки на материалы (${prsWithDetails.length})</h3>`;
                 prsWithDetails.forEach(pr => {
                     html += `
                         <div class="card card-clickable" data-id="${pr.id}" data-type="pr" onclick="showPRDetailModal('${pr.id}')">
@@ -2997,7 +3009,7 @@ const buttons = [
                                 <div class="list-item-title">Заявка #${pr.id.slice(0, 8)}</div>
                                 <span class="status status-${pr.status}">${getPRStatusLabel(pr.status)}</span>
                             </div>
-                            <div class="list-item-subtitle">${pr.users?.name || ''}</div>
+                            <div class="list-item-subtitle">${pr.users?.name || ''} • ${new Date(pr.created_at).toLocaleDateString('ru-RU')}</div>
                         </div>
                     `;
                 });
@@ -3005,7 +3017,7 @@ const buttons = [
 
             const canCreatePR = isElevatedUser() || (String(inst.assignee_id) === String(currentUserProfile?.id));
             if (canCreatePR) {
-                html += `<button class="btn btn-success" onclick="showCreatePRModal('installation', '${inst.id}')">Создать заявку на материалы</button>`;
+                html += `<button class="btn btn-success" onclick="showCreatePRModal('installation', '${inst.id}')">+ Создать заявку на материалы</button>`;
             }
 
             document.getElementById('content').innerHTML = html;
