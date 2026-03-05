@@ -2123,11 +2123,8 @@ const buttons = [
         async function renderDashboard(content) {
             const isManager = isElevatedUser();
             
-            let html = '<h2 style="margin-bottom: 16px">Главная</h2>';
-            
-            // Show loading state
-            html += '<div id="loading-stats" style="text-align:center;padding:40px;color:var(--text-muted)">Загрузка данных...</div>';
-            content.innerHTML = html;
+            // Show loading state first
+            content.innerHTML = '<h2 style="margin-bottom: 16px">Главная</h2><div id="loading-stats" style="text-align:center;padding:40px;color:var(--text-muted)">Загрузка данных...</div>';
             
             try {
                 // Load data with timeout for better UX
@@ -2137,9 +2134,6 @@ const buttons = [
                     isManager ? getInstallations() : getMyInstallations(),
                     getPurchaseRequests()
                 ]);
-                
-                // Remove loading indicator
-                document.getElementById('loading-stats')?.remove();
                 
                 // Calculate progress
                 const totalItems = tasks.length + installations.length;
@@ -2175,7 +2169,7 @@ const buttons = [
                     'postponed': '#8892a0'
                 };
 
-                html += `
+                let html = `
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-value">${projects.length}</div>
@@ -2268,12 +2262,13 @@ const buttons = [
                     }
                 }
                 
+                // Build full HTML and replace content (removes loading indicator)
                 content.innerHTML = html;
                 initSwipeHandlers();
                 
             } catch (error) {
                 console.error('Dashboard load error:', error);
-                document.getElementById('loading-stats').innerHTML = 'Ошибка загрузки: ' + error.message;
+                content.innerHTML = `<h2 style="margin-bottom: 16px">Главная</h2><div style="text-align:center;padding:40px;color:var(--danger)">Ошибка загрузки: ${error.message}</div>`;
             }
         }
         
@@ -2617,7 +2612,8 @@ const buttons = [
             content.innerHTML = html;
         }
         
-        async function showTaskDetail(taskId) {
+        window.showTaskDetail = async function(taskId) {
+            console.log('Opening task detail:', taskId);
             const { data: task } = await supabase
                 .from('tasks')
                 .select('*')
@@ -2894,7 +2890,8 @@ const buttons = [
             content.innerHTML = html;
         }
 
-        async function showInstallationDetail(instId) {
+        window.showInstallationDetail = async function(instId) {
+            console.log('Opening installation detail:', instId);
             const { data: inst } = await supabase
                 .from('installations')
                 .select('*')
