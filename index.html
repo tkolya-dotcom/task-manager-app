@@ -1715,7 +1715,7 @@
         
         // Test notification function
         window.testNotification = async function() {
-            await notifyUserAssignedToTask('Тестовая задача', currentUserProfile?.name || 'Исполнитель', 'Система');
+            await notifyUserAssignedToTask('Тестовая задача', currentUserProfile?.id, currentUserProfile?.name || 'Исполнитель', 'Система');
             showToast('Проверьте уведомление!');
         };
         
@@ -2983,13 +2983,33 @@ const buttons = [
                     ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
                     ${(inst.id_sk || inst.id_sk1) ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk || inst.id_sk1}</div>` : ''}
                     
-                    <!-- Наименование СК (марка/модель) -->
-                    ${(inst.naimenovanie_sk || inst.naimenovanie_sk1) ? `<div class="detail-meta" style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);"><strong>Марка/Модель СК:</strong><br>${inst.naimenovanie_sk || inst.naimenovanie_sk1}</div>` : ''}
+                    <!-- Наименование СК (марка/модель) - отображаем все СК -->
+                    ${(inst.naimenovanie_sk1 || inst.naimenovanie_sk2 || inst.naimenovanie_sk3 || inst.naimenovanie_sk4 || inst.naimenovanie_sk5 || inst.naimenovanie_sk6) ? `
+                        <div style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);margin-top:8px;">
+                            <strong>Марка/Модель СК:</strong>
+                            ${inst.naimenovanie_sk1 ? `<div style="margin-top:4px;">СК1: ${inst.naimenovanie_sk1}</div>` : ''}
+                            ${inst.naimenovanie_sk2 ? `<div style="margin-top:4px;">СК2: ${inst.naimenovanie_sk2}</div>` : ''}
+                            ${inst.naimenovanie_sk3 ? `<div style="margin-top:4px;">СК3: ${inst.naimenovanie_sk3}</div>` : ''}
+                            ${inst.naimenovanie_sk4 ? `<div style="margin-top:4px;">СК4: ${inst.naimenovanie_sk4}</div>` : ''}
+                            ${inst.naimenovanie_sk5 ? `<div style="margin-top:4px;">СК5: ${inst.naimenovanie_sk5}</div>` : ''}
+                            ${inst.naimenovanie_sk6 ? `<div style="margin-top:4px;">СК6: ${inst.naimenovanie_sk6}</div>` : ''}
+                        </div>
+                    ` : ''}
                     
-                    <!-- Тип по договору -->
-                    ${(inst.tip_sk_po_dogovoru || inst.tip_sk_po_dogovoru1) ? `<div class="detail-meta" style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);"><strong>Тип по договору:</strong><br>${inst.tip_sk_po_dogovoru || inst.tip_sk_po_dogovoru1}</div>` : ''}
+                    <!-- Тип по договору - отображаем все СК -->
+                    ${(inst.tip_sk_po_dogovoru1 || inst.tip_sk_po_dogovoru2 || inst.tip_sk_po_dogovoru3 || inst.tip_sk_po_dogovoru4 || inst.tip_sk_po_dogovoru5 || inst.tip_sk_po_dogovoru6) ? `
+                        <div style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);margin-top:8px;">
+                            <strong>Тип по договору:</strong>
+                            ${inst.tip_sk_po_dogovoru1 ? `<div style="margin-top:4px;">СК1: ${inst.tip_sk_po_dogovoru1}</div>` : ''}
+                            ${inst.tip_sk_po_dogovoru2 ? `<div style="margin-top:4px;">СК2: ${inst.tip_sk_po_dogovoru2}</div>` : ''}
+                            ${inst.tip_sk_po_dogovoru3 ? `<div style="margin-top:4px;">СК3: ${inst.tip_sk_po_dogovoru3}</div>` : ''}
+                            ${inst.tip_sk_po_dogovoru4 ? `<div style="margin-top:4px;">СК4: ${inst.tip_sk_po_dogovoru4}</div>` : ''}
+                            ${inst.tip_sk_po_dogovoru5 ? `<div style="margin-top:4px;">СК5: ${inst.tip_sk_po_dogovoru5}</div>` : ''}
+                            ${inst.tip_sk_po_dogovoru6 ? `<div style="margin-top:4px;">СК6: ${inst.tip_sk_po_dogovoru6}</div>` : ''}
+                        </div>
+                    ` : ''}
                     
-                    ${inst.status_oborudovaniya ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya}</div>` : ''}
+                    ${inst.status_oborudovaniya1 ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya1}</div>` : ''}
                     ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU')}</div>` : ''}
                     <div class="detail-meta"><strong>Дата:</strong> ${date}</div>
                     <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
