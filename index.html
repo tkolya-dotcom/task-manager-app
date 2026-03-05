@@ -1404,6 +1404,7 @@
             </div>
             <div style="display:flex;gap:8px;align-items:center">
                 <button class="logout-btn" onclick="testNotification()" title="Тест уведомлений">🔔</button>
+                <button class="logout-btn" onclick="navigate('info')" title="Информация">ℹ</button>
                 <button class="logout-btn" onclick="logout()">Выход</button>
             </div>
         </div>
@@ -1662,30 +1663,7 @@
                 return;
             }
             
-            // 1. Show browser notification immediately if permission granted
-            if ('Notification' in window && Notification.permission === 'granted') {
-                try {
-                    const notification = new Notification('📋 Новое назначение!', {
-                        body: `Вам назначена задача/монтаж от: ${creatorName}`,
-                        icon: '/icon-192.png',
-                        badge: '/icon-192.png',
-                        tag: 'task-assigned-' + Date.now(),
-                        requireInteraction: true
-                    });
-                    
-                    notification.onclick = function() {
-                        window.focus();
-                        navigate('tasks');
-                        notification.close();
-                    };
-                    
-                    console.log('Browser notification shown');
-                } catch (error) {
-                    console.error('Error showing browser notification:', error);
-                }
-            }
-            
-            // 2. Save to notification_queue for later delivery
+            // 1. Save to notification_queue for assignee (DB will deliver when they log in)
             try {
                 const { error } = await supabase
                     .from('notification_queue')
@@ -1699,9 +1677,39 @@
                     }]);
                 
                 if (error) throw error;
-                console.log('Notification saved to queue');
+                console.log('Notification saved to queue for assignee:', assigneeId);
             } catch (error) {
                 console.error('Error saving notification to queue:', error);
+            }
+            
+            // 2. Show browser notification ONLY if current user IS the assignee
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const currentUserId = currentUserProfile?.id;
+                
+                // Only show browser notification if current user is being assigned
+                if (String(currentUserId) === String(assigneeId)) {
+                    try {
+                        const notification = new Notification('📋 Новое назначение!', {
+                            body: `Вам назначена задача/монтаж от: ${creatorName}`,
+                            icon: '/icon-192.png',
+                            badge: '/icon-192.png',
+                            tag: 'task-assigned-' + Date.now(),
+                            requireInteraction: true
+                        });
+                        
+                        notification.onclick = function() {
+                            window.focus();
+                            navigate('tasks');
+                            notification.close();
+                        };
+                        
+                        console.log('Browser notification shown to assignee');
+                    } catch (error) {
+                        console.error('Error showing browser notification:', error);
+                    }
+                } else {
+                    console.log('Browser notification skipped - current user is not assignee');
+                }
             }
         }
         
@@ -2089,8 +2097,8 @@ const buttons = [
             // Show "Заявки" tab for all users
             buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '▤' });
             
-            // Add Info tab at the end
-            buttons.push({ id: 'info', label: 'Информация', icon: 'ℹ' });
+            // Add Archive tab
+            buttons.push({ id: 'archive', label: 'Архив', icon: '📁' });
 
             nav.innerHTML = buttons.map(btn =>
                 `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`
@@ -2120,6 +2128,9 @@ const buttons = [
                         break;
                     case 'purchaseRequests':
                         await renderPurchaseRequests(content);
+                        break;
+                    case 'archive':
+                        await renderArchive(content);
                         break;
                     case 'calendar':
                         await renderCalendar(content);
@@ -3508,6 +3519,63 @@ const buttons = [
                 });
             }
 
+            content.innerHTML = html;
+        }
+
+        // ============================================================
+        // ARCHIVE (Completed/Received Tasks & Installations)
+        // ============================================================
+        async function renderArchive(content) {
+            // Only accessible for managers and deputy heads
+            if (currentUserProfile?.role !== 'manager' && currentUserProfile?.role !== 'deputy_head') {
+                content.innerHTML = `
+                    <h2 style="margin-bottom: 16px">📁 Архив</h2>
+                    <div class="card" style="background: linear-gradient(135deg, rgba(255,107,0,0.1), rgba(255,0,204,0.1)); border: 1px solid var(--danger);">
+                        <p style="line-height: 1.8; margin: 0; color: var(--text);">
+                            Доступ к архиву имеют только руководители и зам. начальника отдела.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Get all archived items (no time limit)
+            const [archivedTasks, archivedInstallations] = await Promise.all([
+                supabase.from('tasks').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false }),
+                supabase.from('installations').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false })
+            ]);
+            
+            let html = `
+                <h2 style="margin-bottom: 16px">📁 Архив</h2>
+                <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,217,255,0.1)); border: 1px solid var(--success);">
+                    <p style="line-height: 1.8; margin: 0; color: var(--text);">
+                        Архив содержит все завершенные задачи и монтажи. Доступ к архиву имеют руководители и зам. начальника отдела.
+                    </p>
+                </div>
+            `;
+            
+            // Archived Tasks Section
+            html += `<h3 class="section-title" style="margin-top: 16px;">✓ Завершенные задачи (${archivedTasks?.length || 0})</h3>`;
+            
+            if (!archivedTasks || archivedTasks.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">✓</div><p>Нет завершенных задач</p></div>';
+            } else {
+                archivedTasks.forEach(task => {
+                    html += renderTaskCard(task);
+                });
+            }
+            
+            // Archived Installations Section
+            html += `<h3 class="section-title" style="margin-top: 24px;">⚙ Завершенные монтажи (${archivedInstallations?.length || 0})</h3>`;
+            
+            if (!archivedInstallations || archivedInstallations.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">⚙</div><p>Нет завершенных монтажей</p></div>';
+            } else {
+                archivedInstallations.forEach(inst => {
+                    html += renderInstallationCard(inst);
+                });
+            }
+            
             content.innerHTML = html;
         }
 
