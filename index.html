@@ -1487,20 +1487,24 @@
                 return;
             }
             
+            console.log('Notification permission:', Notification.permission);
+            
             // Request permission
             if (Notification.permission === 'default') {
                 const permission = await Notification.requestPermission();
+                console.log('Notification permission result:', permission);
                 if (permission === 'granted') {
                     console.log('Notification permission granted');
                     await saveNotificationPermission(permission);
-                    await registerServiceWorkerAndSubscribe();
-                    await initOneSignal();
+                } else if (permission === 'denied') {
+                    console.log('Notification permission denied');
+                    showToast('🔔 Уведомления запрещены. Разрешите в настройках браузера.');
                 }
             } else if (Notification.permission === 'granted') {
                 console.log('Notifications already enabled');
                 await saveNotificationPermission('granted');
-                await registerServiceWorkerAndSubscribe();
-                await initOneSignal();
+            } else if (Notification.permission === 'denied') {
+                console.log('Notifications previously denied');
             }
         }
         
@@ -1650,31 +1654,23 @@
         }
         
         // Send notification to user when assigned to a task
-        async function notifyUserAssignedToTask(taskId, assigneeId, assigneeName, creatorName) {
-            console.log('Sending notification for task', taskId, 'to assignee', assigneeId);
+        async function notifyUserAssignedToTask(resourceId, assigneeId, assigneeName, creatorName) {
+            console.log('Sending notification:', resourceId, 'to', assigneeId);
             
-            // Get task details
-            const { data: task } = await supabase
-                .from('tasks')
-                .select('title')
-                .eq('id', taskId)
-                .single();
-            
-            if (!task) {
-                console.error('Task not found:', taskId);
+            if (!assigneeId) {
+                console.log('No assignee - skipping notification');
                 return;
             }
             
-            // 1. Show local notification for current user (creator/manager)
+            // 1. Show browser notification immediately if permission granted
             if ('Notification' in window && Notification.permission === 'granted') {
                 try {
-                    const notification = new Notification('📋 Новая задача!', {
-                        body: `Задача назначена: ${task.title}\nИсполнитель: ${assigneeName}`,
+                    const notification = new Notification('📋 Новое назначение!', {
+                        body: `Вам назначена задача/монтаж от: ${creatorName}`,
                         icon: '/icon-192.png',
                         badge: '/icon-192.png',
-                        tag: 'task-created-' + Date.now(),
-                        requireInteraction: true,
-                        silent: false
+                        tag: 'task-assigned-' + Date.now(),
+                        requireInteraction: true
                     });
                     
                     notification.onclick = function() {
@@ -1683,44 +1679,29 @@
                         notification.close();
                     };
                     
-                    setTimeout(() => notification.close(), 5000);
-                    console.log('Local notification shown for creator');
+                    console.log('Browser notification shown');
                 } catch (error) {
-                    console.error('Error showing local notification:', error);
+                    console.error('Error showing browser notification:', error);
                 }
             }
             
-            // 2. Send OneSignal push notification to assignee
-            if (window.OneSignalDeferred) {
-                try {
-                    // Try to send via OneSignal REST API
-                    await sendOneSignalNotification(assigneeId, '📋 Вас назначили на задачу!', `Задача: ${task.title}\nСоздал: ${creatorName}`);
-                    
-                    console.log('OneSignal notification queued for assignee:', assigneeId);
-                } catch (error) {
-                    console.error('Error sending OneSignal notification:', error);
-                }
-            }
-            
-            // 3. Save to notification queue - assignee will see it when they log in
+            // 2. Save to notification_queue for later delivery
             try {
                 const { error } = await supabase
                     .from('notification_queue')
-                    .insert({
+                    .insert([{
                         user_id: assigneeId,
-                        title: '📋 Вас назначили на задачу!',
-                        body: `Задача: ${task.title}\nСоздал: ${creatorName}`,
+                        title: '📋 Новое назначение',
+                        body: `Вам назначена задача/монтаж от: ${creatorName}`,
                         type: 'task_assigned',
+                        reference_id: resourceId,
                         sent: false
-                    });
+                    }]);
                 
                 if (error) throw error;
-                console.log('Notification saved to queue for assignee:', assigneeId);
-                
-                // Show toast to creator that notification was sent
-                showToast(`Уведомление отправлено исполнителю: ${assigneeName}`);
+                console.log('Notification saved to queue');
             } catch (error) {
-                console.error('Error saving notification for assignee:', error);
+                console.error('Error saving notification to queue:', error);
             }
         }
         
@@ -1894,8 +1875,13 @@
         };
         
         window.logout = async function() {
-            // Clear the JWT token from localStorage
+            // Sign out from Supabase
+            await supabase.auth.signOut();
+            
+            // Clear local storage
             localStorage.removeItem('token');
+            localStorage.removeItem('supabase_session');
+            
             currentUser = null;
             currentUserProfile = null;
             showLogin();
@@ -1911,35 +1897,42 @@
             }
 
             try {
-                // Get user from Supabase using the token
-                const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+                // Get current session from Supabase
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-                if (userError) {
-                    console.error('Error loading user:', userError);
+                if (sessionError || !session) {
+                    console.error('No valid session:', sessionError);
                     currentUser = null;
                     currentUserProfile = null;
                     localStorage.removeItem('token');
                     return;
                 }
 
+                // Update token if refreshed
+                if (session.access_token !== token) {
+                    localStorage.setItem('token', session.access_token);
+                }
+
                 // Get user profile from users table
                 const { data: userData, error: profileError } = await supabase
                     .from('users')
                     .select('*')
-                    .eq('id', user.id)
+                    .eq('id', session.user.id)
                     .single();
 
                 if (profileError && profileError.code !== 'PGRST116') {
                     console.error('Error fetching user profile:', profileError);
                 }
 
-                currentUser = { id: user.id, email: user.email };
+                currentUser = { id: session.user.id, email: session.user.email };
                 currentUserProfile = userData && userData.role ? userData : {
-                    id: user.id,
-                    email: user.email,
-                    name: user.email.split('@')[0],
+                    id: session.user.id,
+                    email: session.user.email,
+                    name: session.user.email.split('@')[0],
                     role: 'worker'
                 };
+                
+                console.log('User loaded:', currentUserProfile.name);
             } catch (error) {
                 console.error('Error loading user profile:', error);
                 currentUser = null;
@@ -1982,6 +1975,8 @@
                 setTimeout(() => {
                     showToast('🔔 Разрешите уведомления для получения задач', 6000);
                 }, 2000);
+            } else if ('Notification' in window && Notification.permission === 'granted') {
+                console.log('Notifications enabled - ready to receive alerts');
             }
             
             // Check and show pending notifications for current user
@@ -2036,6 +2031,24 @@
         
         // Check auth state on load
         async function initApp() {
+            // Set up auth state listener FIRST
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                console.log('Auth state changed:', event);
+                
+                if (event === 'TOKEN_REFRESHED' && session) {
+                    // Save refreshed token
+                    localStorage.setItem('token', session.access_token);
+                    localStorage.setItem('supabase_session', JSON.stringify(session));
+                    console.log('Token refreshed automatically');
+                } else if (event === 'SIGNED_OUT') {
+                    // User logged out
+                    currentUser = null;
+                    currentUserProfile = null;
+                    localStorage.removeItem('token');
+                    showLogin();
+                }
+            });
+            
             const token = localStorage.getItem('token');
             
             if (token) {
@@ -2075,6 +2088,9 @@ const buttons = [
 
             // Show "Заявки" tab for all users
             buttons.push({ id: 'purchaseRequests', label: 'Заявки', icon: '▤' });
+            
+            // Add Info tab at the end
+            buttons.push({ id: 'info', label: 'Информация', icon: 'ℹ' });
 
             nav.innerHTML = buttons.map(btn =>
                 `<button class="nav-btn ${currentView === btn.id ? 'active' : ''}" onclick="navigate('${btn.id}')">${btn.icon} ${btn.label}</button>`
@@ -2107,6 +2123,9 @@ const buttons = [
                         break;
                     case 'calendar':
                         await renderCalendar(content);
+                        break;
+                    case 'info':
+                        await renderInfo(content);
                         break;
                     default:
                         await renderDashboard(content);
@@ -2899,6 +2918,14 @@ const buttons = [
                 .single();
 
             if (!inst) return;
+            
+            console.log('Installation data:', inst);
+            console.log('SK fields:', {
+                naimenovanie_sk: inst.naimenovanie_sk,
+                tip_sk_po_dogovoru: inst.tip_sk_po_dogovoru,
+                id_sk: inst.id_sk,
+                status_oborudovaniya: inst.status_oborudovaniya
+            });
 
             let projectName = '-';
             let assigneeName = 'Не назначен';
@@ -2961,9 +2988,14 @@ const buttons = [
                     ${inst.servisnyy_id ? `<div class="detail-meta"><strong>Сервисный ID:</strong> ${inst.servisnyy_id}</div>` : ''}
                     ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
                     ${inst.id_sk ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk}</div>` : ''}
-                    ${inst.naimenovanie_sk ? `<div class="detail-meta"><strong>Наименование СК:</strong> ${inst.naimenovanie_sk}</div>` : ''}
+                    
+                    <!-- Наименование СК (марка/модель) -->
+                    ${inst.naimenovanie_sk ? `<div class="detail-meta" style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);"><strong>Марка/Модель СК:</strong><br>${inst.naimenovanie_sk}</div>` : ''}
+                    
+                    <!-- Тип по договору -->
+                    ${inst.tip_sk_po_dogovoru ? `<div class="detail-meta" style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);"><strong>Тип по договору:</strong><br>${inst.tip_sk_po_dogovoru}</div>` : ''}
+                    
                     ${inst.status_oborudovaniya ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya}</div>` : ''}
-                    ${inst.tip_sk_po_dogovoru ? `<div class="detail-meta"><strong>Тип по договору:</strong> ${inst.tip_sk_po_dogovoru}</div>` : ''}
                     ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU')}</div>` : ''}
                     <div class="detail-meta"><strong>Дата:</strong> ${date}</div>
                     <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
@@ -5170,6 +5202,169 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             <span class="status status-${status}">${count}</span>
                         </div>
                     `).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = html;
+        }
+
+        // ============================================================
+        // INFO PAGE
+        // ============================================================
+        async function renderInfo(content) {
+            const role = currentUserProfile?.role || 'worker';
+            const roleName = currentUserProfile?.role === 'manager' ? 'Руководитель' : 
+                           (currentUserProfile?.role === 'deputy_head' ? 'Зам. начальника отдела' : 'Исполнитель');
+            
+            let html = `
+                <h2 style="margin-bottom: 16px">О приложении</h2>
+                
+                <div class="card">
+                    <h3 class="section-title">Планировщик задач и монтажей</h3>
+                    <p style="line-height: 1.8; margin-bottom: 16px;">
+                        Это приложение для управления проектами, задачами и монтажами. 
+                        Здесь вы можете создавать проекты, назначать задачи исполнителям, 
+                        планировать монтажи и отслеживать прогресс выполнения работ.
+                    </p>
+                    
+                    <p style="line-height: 1.8; color: var(--accent);">
+                        <strong>Ваша роль:</strong> ${roleName}
+                    </p>
+                </div>
+            `;
+            
+            // Instructions based on role
+            if (role === 'manager' || role === 'deputy_head') {
+                const managerTitle = role === 'manager' ? 'Руководителя' : 'Зам. начальника отдела';
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Инструкция ${managerTitle}</h3>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📋 Проекты</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Создавайте новые проекты кнопкой «+ Новый проект»</li>
+                            <li>Назначайте сроки и описания</li>
+                            <li>Отслеживайте прогресс по всем проектам</li>
+                            <li>Архивируйте завершенные проекты</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">✓ Задачи</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Создавайте задачи в рамках проектов</li>
+                            <li>Назначайте исполнителей из списка сотрудников</li>
+                            <li>Устанавливайте сроки выполнения</li>
+                            <li>Контролируйте статусы задач</li>
+                            <li>При необходимости создавайте заявки на материалы</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">⚙ Монтажи</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Планируйте монтажные работы</li>
+                            <li>Назначайте ответственных исполнителей</li>
+                            <li>Указывайте адреса и время проведения работ</li>
+                            <li>Отслеживайте статусы монтажей</li>
+                            <li>При поиске адреса система автоматически подставит данные из базы</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📅 Календарь</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Просматривайте все задачи и монтажи по датам</li>
+                            <li>Фильтруйте по исполнителям</li>
+                            <li>Кликайте на дату для просмотра деталей</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📊 Заявки на материалы</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Создавайте заявки для проектов и монтажей</li>
+                            <li>Утверждайте заявки от исполнителей</li>
+                            <li>Отслеживайте статусы закупок</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            if (role === 'worker' || role === 'deputy_head' || role === 'manager') {
+                html += `
+                    <div class="card">
+                        <h3 class="section-title">Инструкция исполнителя</h3>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📋 Мои задачи</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>На главной странице видите ваши текущие задачи</li>
+                            <li>Кликайте на задачу для просмотра деталей</li>
+                            <li>Обновляйте статус по мере выполнения</li>
+                            <li>Если нужны материалы - создайте заявку</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">⚙ Мои монтажи</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Просматривайте запланированные монтажи</li>
+                            <li>Проверяйте адреса и время проведения</li>
+                            <li>Обновляйте статус после выполнения</li>
+                            <li>Автоматическое заполнение данных о площадке при выборе адреса</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📅 Календарь</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Смотрите свое расписание на месяц</li>
+                            <li>Фильтр покажет только ваши задачи и монтажи</li>
+                            <li>Кликните на дату для подробностей</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">📦 Заявки на материалы</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Создавайте заявки для ваших задач</li>
+                            <li>Выбирайте материалы из справочника</li>
+                            <li>Указывайте количество и примечание</li>
+                            <li>Отслеживайте статус рассмотрения</li>
+                        </ul>
+                        
+                        <h4 style="color: var(--accent); margin-top: 16px;">🔔 Уведомления</h4>
+                        <ul style="line-height: 1.8; padding-left: 20px;">
+                            <li>Разрешите уведомления для получения новых задач</li>
+                            <li>Уведомления приходят при назначении на задачу/монтаж</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            // General tips for all users
+            html += `
+                <div class="card">
+                    <h3 class="section-title" style="margin-top: 16px;">Общие возможности</h3>
+                    
+                    <h4 style="color: var(--accent); margin-top: 16px;">💡 Главная страница</h4>
+                    <ul style="line-height: 1.8; padding-left: 20px;">
+                        <li>Статистика по всем проектам, задачам и монтажам</li>
+                        <li>Прогресс выполнения работ</li>
+                        <li>Статусы задач и монтажей с цветовой индикацией</li>
+                        <li>Быстрый доступ к основным разделам</li>
+                    </ul>
+                    
+                    <h4 style="color: var(--accent); margin-top: 16px;">🎨 Статусы и цвета</h4>
+                    <ul style="line-height: 1.8; padding-left: 20px;">
+                        <li><span style="color: #3399ff">●</span> Синий - Новый/New</li>
+                        <li><span style="color: #FF6B00">●</span> Оранжевый - Запланирован/Planned</li>
+                        <li><span style="color: #00D9FF">●</span> Голубой - В работе/In Progress</li>
+                        <li><span style="color: #ff00cc">●</span> Розовый - Ожидает материалов</li>
+                        <li><span style="color: #00FF88">●</span> Зеленый - Выполнен/Done</li>
+                        <li><span style="color: #8892a0">●</span> Серый - Отложен/Postponed</li>
+                    </ul>
+                    
+                    <h4 style="color: var(--accent); margin-top: 16px;">📱 Мобильная версия</h4>
+                    <ul style="line-height: 1.8; padding-left: 20px;">
+                        <li>Приложение адаптировано для телефонов</li>
+                        <li>Свайп влево для удаления (где доступно)</li>
+                        <li>Нижняя навигационная панель</li>
+                        <li>Сохранение сессии - не нужно логиниться заново</li>
+                    </ul>
+                </div>
+                
+                <div class="card" style="margin-top: 16px; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(0,255,136,0.1)); border: 1px solid var(--accent);">
+                    <h3 class="section-title">💬 Нужна помощь?</h3>
+                    <p style="line-height: 1.8;">
+                        По всем вопросам обращайтесь к администратору системы или руководителю проекта.
+                    </p>
                 </div>
             `;
             
