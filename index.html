@@ -4289,7 +4289,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             // Debounce search
             searchTimeout = setTimeout(async () => {
                 try {
-                    // Search in both tables with only needed columns and limit
+                    // Search in both tables with only needed columns for display
                     const { data: addresses1, error: error1 } = await supabase
                         .from('atss_q1_2026')
                         .select('id_ploshadki, servisnyy_id, adres_razmeshcheniya, rayon, naimenovanie_sk1')
@@ -4345,14 +4345,18 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                             </div>
                         `;
                         
-                        // Add click handler separately
+                        // Add click handler - load full data on click
                         setTimeout(() => {
                             const element = document.getElementById(addrId);
                             if (element) {
-                                element.onclick = function() {
-                                    fillInstallationFields(addr);
-                                    document.getElementById('instAddress').value = address;
-                                    document.getElementById('addressSuggestions').innerHTML = '';
+                                element.onclick = async function() {
+                                    // Load full data for this address
+                                    const fullAddressData = await loadFullAddressData(address);
+                                    if (fullAddressData) {
+                                        fillInstallationFields(fullAddressData);
+                                        document.getElementById('instAddress').value = address;
+                                        document.getElementById('addressSuggestions').innerHTML = '';
+                                    }
                                 };
                             }
                         }, 0);
@@ -4379,6 +4383,39 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 }
             }
         };
+        
+        // Load full address data from database
+        async function loadFullAddressData(address) {
+            try {
+                // Search in ATSS table
+                const { data: atssData, error: atssError } = await supabase
+                    .from('atss_q1_2026')
+                    .select('*')
+                    .eq('adres_razmeshcheniya', address)
+                    .single();
+                
+                if (!atssError && atssData) {
+                    return atssData;
+                }
+                
+                // Search in КАСИП АЗМ table
+                const { data: kasipData, error: kasipError } = await supabase
+                    .from('kasip_azm_q1_2026')
+                    .select('*')
+                    .eq('adres_raspolozheniya', address)
+                    .single();
+                
+                if (!kasipError && kasipData) {
+                    return kasipData;
+                }
+                
+                console.error('Failed to load full address data:', atssError || kasipError);
+                return null;
+            } catch (error) {
+                console.error('Load full address data error:', error);
+                return null;
+            }
+        }
         
         // Fill installation fields from atss_q1_2026 or kasip_azm_q1_2026 tables
         window.fillInstallationFields = function(data) {
