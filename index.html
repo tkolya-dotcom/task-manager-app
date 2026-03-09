@@ -2626,7 +2626,7 @@ const buttons = [
             const { data, error } = await supabase
                 .from('tasks')
                 .select('*')
-                .not('status', 'in', ['done', 'postponed'])
+                .filter('status', 'not.in', '(done,postponed)')
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return await enrichTasks(data || []);
@@ -2638,7 +2638,7 @@ const buttons = [
                 .from('tasks')
                 .select('*')
                 .eq('assignee_id', userId)
-                .not('status', 'in', ['done', 'postponed'])
+                .filter('status', 'not.in', '(done,postponed)')
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return await enrichTasks(data || []);
@@ -2925,7 +2925,7 @@ const buttons = [
             const { data, error } = await supabase
                 .from('installations')
                 .select('*')
-                .not('status', 'in', ['done', 'postponed', 'received'])
+                .filter('status', 'not.in', '(done,postponed,received)')
                 .order('scheduled_at', { ascending: true });
             if (error) throw error;
             return await enrichInstallations(data || []);
@@ -2937,7 +2937,7 @@ const buttons = [
                 .from('installations')
                 .select('*')
                 .eq('assignee_id', userId)
-                .not('status', 'in', ['done', 'postponed', 'received'])
+                .filter('status', 'not.in', '(done,postponed,received)')
                 .order('scheduled_at', { ascending: true });
             if (error) throw error;
             return await enrichInstallations(data || []);
