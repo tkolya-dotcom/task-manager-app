@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const getToken = () => localStorage.getItem('token');
 
@@ -48,6 +48,32 @@ export const authApi = {
   getUsers: async (role) => {
     const params = role ? `?role=${role}` : '';
     const response = await fetch(`${API_URL}/auth/users${params}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  }
+};
+
+// Users Status API
+export const usersApi = {
+  getStatus: async () => {
+    const response = await fetch(`${API_URL}/users/status`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  heartbeat: async () => {
+    const response = await fetch(`${API_URL}/users/heartbeat`, {
+      method: 'POST',
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  markOffline: async () => {
+    const response = await fetch(`${API_URL}/users/offline`, {
+      method: 'POST',
       headers: headers()
     });
     return handleResponse(response);
@@ -159,6 +185,14 @@ export const installationsApi = {
     return handleResponse(response);
   },
 
+  searchAddresses: async (searchTerm) => {
+    const params = searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : '';
+    const response = await fetch(`${API_URL}/installations/search-address${params}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
   create: async (installation) => {
     const response = await fetch(`${API_URL}/installations`, {
       method: 'POST',
@@ -221,11 +255,11 @@ export const purchaseRequestsApi = {
     return handleResponse(response);
   },
 
-  updateStatus: async (id, status, comment) => {
+  updateStatus: async (id, status, comment, receipt_address, received_at) => {
     const response = await fetch(`${API_URL}/purchase-requests/${id}/status`, {
       method: 'PUT',
       headers: headers(),
-      body: JSON.stringify({ status, comment })
+      body: JSON.stringify({ status, comment, receipt_address, received_at })
     });
     return handleResponse(response);
   },
@@ -259,6 +293,32 @@ export const purchaseRequestsApi = {
   deleteItem: async (itemId) => {
     const response = await fetch(`${API_URL}/purchase-requests/items/${itemId}`, {
       method: 'DELETE',
+      headers: headers()
+    });
+    return handleResponse(response);
+  }
+};
+
+// Materials API
+export const materialsApi = {
+  getAll: async (filters = {}) => {
+    const params = new URLSearchParams(filters).toString();
+    const response = await fetch(`${API_URL}/materials${params ? `?${params}` : ''}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  search: async (searchTerm) => {
+    const params = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
+    const response = await fetch(`${API_URL}/materials${params}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  getCategories: async () => {
+    const response = await fetch(`${API_URL}/materials/categories/list`, {
       headers: headers()
     });
     return handleResponse(response);

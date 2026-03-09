@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { projectsApi, tasksApi, installationsApi, purchaseRequestsApi } from '../api';
+import UserStatusCard from '../components/UserStatusCard';
 
 const Dashboard = () => {
   const { user, isManager, logout } = useAuth();
@@ -182,7 +183,10 @@ const Dashboard = () => {
               Подробнее
             </Link>
           </div>
-        </div>
+</div>
+
+        {/* User Status Card - Shows online/offline users with real-time updates */}
+        <UserStatusCard />
 
         {/* Progress Bar Section */}
         <div className="card">

@@ -428,3 +428,121 @@ body {
   font-weight: 500;
   color: var(--text-primary);
 }
+
+/* User Status Card Styles */
+.user-status-counts {
+  display: flex;
+  gap: 15px;
+  font-size: 14px;
+}
+
+.online-count, .offline-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.online {
+  background-color: var(--success-color);
+  box-shadow: 0 0 6px var(--success-color);
+}
+
+.status-dot.offline {
+  background-color: var(--text-secondary);
+}
+
+.user-status-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.user-status-section {
+  margin-bottom: 15px;
+}
+
+.user-status-section:last-child {
+  margin-bottom: 0;
+}
+
+.user-status-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background-color: #fafafa;
+}
+
+.user-item:last-child {
+  margin-bottom: 0;
+}
+
+.user-item.online {
+  background-color: #e8f5e9;
+}
+
+.user-item.offline {
+  background-color: #f5f5f5;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.you-badge {
+  color: var(--primary-color);
+  font-size: 12px;
+}
+
+.user-role {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-indicator {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.status-indicator.online {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.last-seen {
+  font-size: 12px;
+  color: var(--text-secondary);
+}

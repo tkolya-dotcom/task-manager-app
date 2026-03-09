@@ -2073,6 +2073,9 @@
             
             // Check and show pending notifications for current user
             checkAndShowPendingNotifications();
+            
+            // Load user statuses for dashboard
+            loadUserStatus();
         }
         
         // Check for pending notifications from notification_queue
@@ -2303,6 +2306,19 @@ const buttons = [
                         </div>
                     </div>
 
+                    <!-- User Status Card -->
+                    <div class="card" id="userStatusCard">
+                        <h3 class="section-title">Пользователи</h3>
+                        <div id="userStatusLoading" style="text-align:center;padding:20px;color:var(--text-muted)">Загрузка...</div>
+                        <div id="userStatusContent" style="display:none;">
+                            <div style="display:flex;gap:16px;margin-bottom:16px;font-size:14px;">
+                                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--success);margin-right:6px;box-shadow:0 0 6px var(--success);"></span>Онлайн: <span id="onlineCount">0</span></span>
+                                <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--text-muted);margin-right:6px;"></span>Офлайн: <span id="offlineCount">0</span></span>
+                            </div>
+                            <div id="userStatusList" style="max-height:250px;overflow-y:auto;"></div>
+                        </div>
+                    </div>
+
                     <!-- Progress Bar -->
                     <div class="card">
                         <h3 class="section-title">Общее выполнение</h3>
@@ -2362,6 +2378,7 @@ const buttons = [
                 // Build full HTML and replace content (removes loading indicator)
                 content.innerHTML = html;
                 initSwipeHandlers();
+                loadUserStatus();
                 
             } catch (error) {
                 console.error('Dashboard load error:', error);
@@ -3652,7 +3669,7 @@ const buttons = [
                     <h2 style="margin-bottom: 16px">📁 Архив</h2>
                     <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,217,255,0.1)); border: 1px solid var(--success);">
                         <p style="line-height: 1.8; margin: 0; color: var(--text);">
-                            Архив содержит все завершенные задачи и монтажи. Доступ к архиву имеют только руководители и зам. начальника отдела.
+                            Тут только все завершенные задачи и монтажи.
                         </p>
                     </div>
                 `;
@@ -5814,6 +5831,136 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             initSwipeHandlers();
         };
 
+        // ============================================================
+        // USER STATUS DISPLAY
+        // ============================================================
+        
+        // Load and display user statuses on dashboard
+        window.loadUserStatus = async function() {
+            const loadingEl = document.getElementById('userStatusLoading');
+            const contentEl = document.getElementById('userStatusContent');
+            const listEl = document.getElementById('userStatusList');
+            const onlineCountEl = document.getElementById('onlineCount');
+            const offlineCountEl = document.getElementById('offlineCount');
+            
+            if (!loadingEl || !contentEl) {
+                console.log('User status elements not found, skipping...');
+                return;
+            }
+            
+            try {
+                // Fetch all users with their status
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('id, name, role, is_online, last_seen_at')
+                    .order('name');
+                
+                if (error) throw error;
+                
+                if (!users || users.length === 0) {
+                    loadingEl.style.display = 'none';
+                    listEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;">Нет пользователей</p>';
+                    contentEl.style.display = 'block';
+                    return;
+                }
+                
+                // Calculate online/offline
+                const now = new Date();
+                const onlineUsers = [];
+                const offlineUsers = [];
+                
+                users.forEach(user => {
+                    // Consider online if is_online is true OR last_seen was within 2 minutes
+                    const lastSeen = user.last_seen_at ? new Date(user.last_seen_at) : null;
+                    const isRecentlyActive = lastSeen && (now - lastSeen) < 120000; // 2 minutes
+                    
+                    if (user.is_online || isRecentlyActive) {
+                        onlineUsers.push(user);
+                    } else {
+                        offlineUsers.push(user);
+                    }
+                });
+                
+                // Update counts
+                if (onlineCountEl) onlineCountEl.textContent = onlineUsers.length;
+                if (offlineCountEl) offlineCountEl.textContent = offlineUsers.length;
+                
+                // Build user list HTML
+                let html = '';
+                
+                // Online users first
+                if (onlineUsers.length > 0) {
+                    onlineUsers.forEach(user => {
+                        const roleLabel = user.role === 'manager' ? 'Руководитель' : 
+                                        (user.role === 'deputy_head' ? 'Зам. начальника' : 'Исполнитель');
+                        html += `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(0,255,136,0.05);border-radius:8px;margin-bottom:8px;border-left:3px solid var(--success);">
+                                <div>
+                                    <div style="font-weight:500;color:var(--text)">${user.name}</div>
+                                    <div style="font-size:12px;color:var(--text-muted)">${roleLabel}</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);"></span>
+                                    <span style="font-size:11px;color:var(--success);margin-left:4px;">Онлайн</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // Offline users
+                if (offlineUsers.length > 0) {
+                    offlineUsers.forEach(user => {
+                        const roleLabel = user.role === 'manager' ? 'Руководитель' : 
+                                        (user.role === 'deputy_head' ? 'Зам. начальника' : 'Исполнитель');
+                        
+                        // Format last seen
+                        let lastSeenText = 'был(а) давно';
+                        if (user.last_seen_at) {
+                            const lastSeen = new Date(user.last_seen_at);
+                            const diffMs = now - lastSeen;
+                            const diffMins = Math.floor(diffMs / 60000);
+                            const diffHours = Math.floor(diffMs / 3600000);
+                            const diffDays = Math.floor(diffMs / 86400000);
+                            
+                            if (diffMins < 60) {
+                                lastSeenText = `${diffMins} мин. назад`;
+                            } else if (diffHours < 24) {
+                                lastSeenText = `${diffHours} ч. назад`;
+                            } else {
+                                lastSeenText = `${diffDays} дн. назад`;
+                            }
+                        }
+                        
+                        html += `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--secondary);border-radius:8px;margin-bottom:8px;border-left:3px solid var(--text-muted);">
+                                <div>
+                                    <div style="font-weight:500;color:var(--text)">${user.name}</div>
+                                    <div style="font-size:12px;color:var(--text-muted)">${roleLabel}</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted);"></span>
+                                    <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">${lastSeenText}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                listEl.innerHTML = html;
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+                
+                console.log('User status loaded:', onlineUsers.length, 'online,', offlineUsers.length, 'offline');
+                
+            } catch (error) {
+                console.error('Error loading user status:', error);
+                loadingEl.style.display = 'none';
+                listEl.innerHTML = '<p style="color:var(--danger);text-align:center;">Ошибка загрузки</p>';
+                contentEl.style.display = 'block';
+            }
+        };
+        
         // ============================================================
         // INITIALIZATION
         // ============================================================

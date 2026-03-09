@@ -54,6 +54,32 @@ export const authApi = {
   }
 };
 
+// Users Status API
+export const usersApi = {
+  getStatus: async () => {
+    const response = await fetch(`${API_URL}/users/status`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  heartbeat: async () => {
+    const response = await fetch(`${API_URL}/users/heartbeat`, {
+      method: 'POST',
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  markOffline: async () => {
+    const response = await fetch(`${API_URL}/users/offline`, {
+      method: 'POST',
+      headers: headers()
+    });
+    return handleResponse(response);
+  }
+};
+
 // Projects API
 export const projectsApi = {
   getAll: async (status) => {
