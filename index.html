@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -1720,6 +1720,84 @@
         };
         
         // ============================================================
+        // USER STATUS TRACKING
+        // ============================================================
+        
+        // Update user's online status and last_seen
+        async function updateUserStatus(isOnline) {
+            if (!currentUserProfile?.id) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .update({ 
+                        is_online: isOnline,
+                        last_seen_at: new Date().toISOString()
+                    })
+                    .eq('id', currentUserProfile.id);
+                
+                if (error) {
+                    console.error('Error updating user status:', error);
+                } else {
+                    console.log('User status updated:', isOnline ? 'online' : 'offline');
+                }
+            } catch (error) {
+                console.error('Error in updateUserStatus:', error);
+            }
+        }
+        
+        // Periodic heartbeat to update last_seen_at
+        let heartbeatInterval = null;
+        
+        function startHeartbeat() {
+            // Update last_seen every 30 seconds while user is active
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
+            
+            heartbeatInterval = setInterval(async () => {
+                if (currentUserProfile?.id) {
+                    await updateUserStatus(true);
+                }
+            }, 30000); // 30 seconds
+        }
+        
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+        
+        // Handle visibility change (tab switching, browser close)
+        document.addEventListener('visibilitychange', async () => {
+            if (!currentUserProfile?.id) return;
+            
+            if (document.visibilityState === 'visible') {
+                // User returned to the app - update status to online
+                await updateUserStatus(true);
+                startHeartbeat();
+            } else {
+                // User left the app - just update last_seen
+                try {
+                    await supabase
+                        .from('users')
+                        .update({ last_seen_at: new Date().toISOString() })
+                        .eq('id', currentUserProfile.id);
+                } catch (e) {
+                    console.error('Error updating last_seen on visibility change:', e);
+                }
+            }
+        });
+        
+        // Handle beforeunload - update status to offline
+        window.addEventListener('beforeunload', async () => {
+            if (currentUserProfile?.id) {
+                await updateUserStatus(false);
+            }
+        });
+        
+        // ============================================================
         // AUTH FUNCTIONS
         // ============================================================
         window.showAuthTab = function(tab) {
@@ -1883,6 +1961,9 @@
         };
         
         window.logout = async function() {
+            // Stop user status tracking (heartbeat)
+            stopHeartbeat();
+            
             // Sign out from Supabase
             await supabase.auth.signOut();
             
@@ -1974,6 +2055,9 @@
             
             // Initialize push notifications
             initNotifications();
+            
+            // Start user status tracking (heartbeat)
+            startHeartbeat();
             
             renderNav();
             renderContent();
@@ -3551,8 +3635,8 @@ const buttons = [
                     supabase.from('installations').select('*').in('status', ['done', 'postponed', 'received']).order('updated_at', { ascending: false })
                 ]);
                 
-                const archivedTasks = archivedTasksResult.data || [];
-                const archivedInstallations = archivedInstallationsResult.data || [];
+                const archivedTasks = Array.isArray(archivedTasksResult.data) ? archivedTasksResult.data : [];
+                const archivedInstallations = Array.isArray(archivedInstallationsResult.data) ? archivedInstallationsResult.data : [];
                 
                 if (archivedTasksResult.error) {
                     console.error('Error fetching archived tasks:', archivedTasksResult.error);
