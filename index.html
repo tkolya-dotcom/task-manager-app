@@ -1750,6 +1750,7 @@
         
         // Periodic heartbeat to update last_seen_at
         let heartbeatInterval = null;
+        let userStatusInterval = null;
         
         function startHeartbeat() {
             // Update last_seen every 30 seconds while user is active
@@ -1769,6 +1770,25 @@
                 clearInterval(heartbeatInterval);
                 heartbeatInterval = null;
             }
+            // Also stop user status polling
+            if (userStatusInterval) {
+                clearInterval(userStatusInterval);
+                userStatusInterval = null;
+            }
+        }
+        
+        // Start periodic polling for user statuses on dashboard
+        function startUserStatusPolling() {
+            if (userStatusInterval) {
+                clearInterval(userStatusInterval);
+            }
+            
+            // Update user statuses every 30 seconds
+            userStatusInterval = setInterval(() => {
+                if (currentView === 'dashboard') {
+                    loadUserStatus();
+                }
+            }, 30000);
         }
         
         // Handle visibility change (tab switching, browser close)
@@ -2064,6 +2084,9 @@
             // Start user status tracking (heartbeat)
             startHeartbeat();
             
+            // Start periodic polling for user statuses on dashboard
+            startUserStatusPolling();
+            
             renderNav();
             renderContent();
             
@@ -2334,23 +2357,6 @@ const buttons = [
                             <span>${progressPercent}% выполнено</span>
                             <span>${completedItems} из ${totalItems} завершено</span>
                         </div>
-                    </div>
-
-                    <!-- Installation Status Breakdown -->
-                    <div class="card">
-                        <h3 class="section-title">Статусы монтажей</h3>
-                        ${Object.entries(instStatusCounts).map(([status, count]) => {
-                            const width = installations.length > 0 ? (count / installations.length) * 100 : 0;
-                            return `
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <span style="min-width: 140px; font-size: 13px;">${getInstStatusLabel(status)}</span>
-                                    <div style="flex: 1; height: 20px; background: var(--secondary); border-radius: 10px; overflow: hidden;">
-                                        <div style="height: 100%; width: ${width}%; background: ${statusColors[status]}; border-radius: 10px; transition: width 0.3s ease;"></div>
-                                    </div>
-                                    <span style="min-width: 30px; text-align: right; font-weight: 500;">${count}</span>
-                                </div>
-                            `;
-                        }).join('')}
                     </div>
                 `;
                 
