@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import usersRoutes from './routes/users.js';
 import projectsRoutes from './routes/projects.js';
 import tasksRoutes from './routes/tasks.js';
 import installationsRoutes from './routes/installations.js';
@@ -45,6 +46,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/installations', installationsRoutes);

@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { authenticateToken, requireManager } from '../middleware/auth.js';
+import { sendPushNotification } from '../utils/pushNotifications.js';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
         project:projects(id, name),
         assignee:users!installations_assignee_id_fkey(id, name, email)
       `)
+      .eq('is_archived', false)
       .order('scheduled_at', { ascending: true });
 
     if (project_id) {
