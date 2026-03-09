@@ -1326,6 +1326,12 @@
         /* ========================================
            RESPONSIVE
            ======================================== */
+        @media (max-width: 768px) {
+            .stats-grid {
+                display: none !important;
+            }
+        }
+        
         @media (max-width: 480px) {
             h1 { font-size: 24px; }
             h2 { font-size: 20px; }
@@ -1333,10 +1339,6 @@
             
             .auth-box {
                 padding: 24px 16px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -1963,6 +1965,9 @@
         window.logout = async function() {
             // Stop user status tracking (heartbeat)
             stopHeartbeat();
+            
+            // Immediately set user status to offline
+            await updateUserStatus(false);
             
             // Sign out from Supabase
             await supabase.auth.signOut();
@@ -2621,6 +2626,7 @@ const buttons = [
             const { data, error } = await supabase
                 .from('tasks')
                 .select('*')
+                .not('status', 'in', ['done', 'postponed'])
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return await enrichTasks(data || []);
@@ -2632,6 +2638,7 @@ const buttons = [
                 .from('tasks')
                 .select('*')
                 .eq('assignee_id', userId)
+                .not('status', 'in', ['done', 'postponed'])
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return await enrichTasks(data || []);
@@ -2707,7 +2714,7 @@ const buttons = [
                 { value: 'postponed', label: 'Отложены' }
             ];
             filterOptions.forEach(opt => {
-                html += `<button class="btn btn-sm ${taskStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:70px" onclick="setTaskStatusFilter('${opt.value}')">${opt.label}</button>`;
+            html += `<button class="btn btn-sm ${taskStatusFilter === opt.value ? 'btn-primary' : 'btn-outline'}" style="flex:1;min-width:60px;font-size:11px;padding:6px 8px;white-space:normal;text-align:center;line-height:1.2" onclick="setTaskStatusFilter('${opt.value}')">${opt.label}</button>`;
             });
             html += `</div>`;
             
@@ -2918,6 +2925,7 @@ const buttons = [
             const { data, error } = await supabase
                 .from('installations')
                 .select('*')
+                .not('status', 'in', ['done', 'postponed', 'received'])
                 .order('scheduled_at', { ascending: true });
             if (error) throw error;
             return await enrichInstallations(data || []);
@@ -2929,6 +2937,7 @@ const buttons = [
                 .from('installations')
                 .select('*')
                 .eq('assignee_id', userId)
+                .not('status', 'in', ['done', 'postponed', 'received'])
                 .order('scheduled_at', { ascending: true });
             if (error) throw error;
             return await enrichInstallations(data || []);
