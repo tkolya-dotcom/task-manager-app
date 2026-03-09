@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { authenticateToken, requireManager } from '../middleware/auth.js';
+import { notifyTaskAssignment } from '../utils/pushNotifications.js';
 
 const router = express.Router();
 
@@ -136,6 +137,16 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
 		}
 
 		console.log('Task created successfully:', task);
+		
+		// Send push notification if task has assignee
+		if (task && task.assignee_id) {
+			try {
+				await notifyTaskAssignment(task.id);
+			} catch (notifyError) {
+				console.error('Error sending notification:', notifyError);
+			}
+		}
+		
 		res.status(201).json({ task });
 	} catch (error) {
 		console.error('Create task error:', error);
