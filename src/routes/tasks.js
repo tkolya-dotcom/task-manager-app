@@ -50,6 +50,37 @@ router.get('/', authenticateToken, async (req, res) => {
 	}
 });
 
+// Get archived tasks
+router.get('/archived', authenticateToken, async (req, res) => {
+	try {
+		let query = supabase
+			.from('tasks')
+			.select(`
+				*,
+				project:projects(id, name),
+				assignee:users!tasks_assignee_id_fkey(id, name, email)
+			`)
+			.eq('is_archived', true)
+			.order('created_at', { ascending: false });
+
+		// Workers can only see their own archived tasks
+		if (req.user.role === 'worker') {
+			query = query.eq('assignee_id', req.user.id);
+		}
+
+		const { data: tasks, error } = await query;
+
+		if (error) {
+			return res.status(400).json({ error: error.message });
+		}
+
+		res.json({ tasks });
+	} catch (error) {
+		console.error('Get archived tasks error:', error);
+		res.status(500).json({ error: 'Internal server error' });
+	}
+});
+
 // Get single task
 router.get('/:id', authenticateToken, async (req, res) => {
 	try {
@@ -158,7 +189,7 @@ router.post('/', authenticateToken, requireManager, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
 	try {
 		const { id } = req.params;
-		const { title, description, assignee_id, status, due_date } = req.body;
+		const { title, description, assignee_id, status, due_date, is_archived } = req.body;
 
 		// Check if task exists
 		const { data: existingTask } = await supabase
@@ -189,6 +220,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
 			due_date: parsedDueDate,
 			updated_at: new Date().toISOString()
 		};
+		
+		// Handle archiving/unarchiving
+		if (is_archived !== undefined) {
+			updateData.is_archived = is_archived;
+		}
 		
 		if (status && existingTask.status !== status) {
 			updateData.status_changed_at = new Date().toISOString();

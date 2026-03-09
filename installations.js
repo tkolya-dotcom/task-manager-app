@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { authenticateToken, requireManager } from '../middleware/auth.js';
+import { sendPushNotification } from '../utils/pushNotifications.js';
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
         project:projects(id, name),
         assignee:users!installations_assignee_id_fkey(id, name, email)
       `)
+      .eq('is_archived', false)
       .order('scheduled_at', { ascending: true });
 
     if (project_id) {
@@ -44,6 +46,37 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json({ installations });
   } catch (error) {
     console.error('Get installations error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get archived installations
+router.get('/archived', authenticateToken, async (req, res) => {
+  try {
+    let query = supabase
+      .from('installations')
+      .select(`
+        *,
+        project:projects(id, name),
+        assignee:users!installations_assignee_id_fkey(id, name, email)
+      `)
+      .eq('is_archived', true)
+      .order('scheduled_at', { ascending: true });
+
+    // Workers can only see their own archived installations
+    if (req.user.role === 'worker') {
+      query = query.eq('assignee_id', req.user.id);
+    }
+
+    const { data: installations, error } = await query;
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ installations });
+  } catch (error) {
+    console.error('Get archived installations error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -254,6 +287,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { 
       title, description, assignee_id, status, scheduled_at, address, receipt_address, received_at,
+      is_archived,
       // SK fields
       id_ploshadki, servisnyy_id, rayon, planovaya_data_1_kv_2026,
       id_sk1, naimenovanie_sk1, status_oborudovaniya1, tip_sk_po_dogovoru1,
@@ -320,6 +354,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       tip_sk_po_dogovoru6,
       updated_at: new Date().toISOString()
     };
+    
+    // Handle archiving/unarchiving
+    if (is_archived !== undefined) {
+      updateData.is_archived = is_archived;
+    }
     
     if (status && existingInstallation.status !== status) {
       updateData.status_changed_at = new Date().toISOString();
