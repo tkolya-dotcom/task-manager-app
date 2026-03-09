@@ -134,6 +134,13 @@ export const tasksApi = {
     return handleResponse(response);
   },
 
+  getArchived: async () => {
+    const response = await fetch(`${API_URL}/tasks/archived`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
   getById: async (id) => {
     const response = await fetch(`${API_URL}/tasks/${id}`, {
       headers: headers()
@@ -173,6 +180,13 @@ export const installationsApi = {
   getAll: async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
     const response = await fetch(`${API_URL}/installations${params ? `?${params}` : ''}`, {
+      headers: headers()
+    });
+    return handleResponse(response);
+  },
+
+  getArchived: async () => {
+    const response = await fetch(`${API_URL}/installations/archived`, {
       headers: headers()
     });
     return handleResponse(response);

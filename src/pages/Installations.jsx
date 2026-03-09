@@ -395,6 +395,15 @@ const Installations = () => {
     }
   };
 
+  const handleArchiveInstallation = async (installationId) => {
+    try {
+      await installationsApi.update(installationId, { is_archived: true });
+      loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const getStatusLabel = (status) => {
     const labels = {
       new: 'Новый',
@@ -426,6 +435,7 @@ const Installations = () => {
           <Link to="/tasks">Задачи</Link>
           <Link to="/installations">Монтажи</Link>
           <Link to="/purchase-requests">Заявки</Link>
+          <Link to="/archive">Архив</Link>
         </nav>
       </header>
 
@@ -501,6 +511,14 @@ const Installations = () => {
                               style={{ padding: '5px 10px', fontSize: '12px' }}
                             >
                               Изменить
+                            </button>
+                            <button 
+                              className="btn btn-secondary" 
+                              onClick={() => handleArchiveInstallation(inst.id)}
+                              style={{ padding: '5px 10px', fontSize: '12px' }}
+                              title="Переместить в архив"
+                            >
+                              В архив
                             </button>
                             <button 
                               className="btn btn-danger" 
