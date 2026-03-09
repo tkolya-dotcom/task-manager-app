@@ -3529,6 +3529,9 @@ const buttons = [
         // ARCHIVE (Completed/Received Tasks & Installations)
         // ============================================================
         async function renderArchive(content) {
+            // Show loading first
+            content.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Загрузка архива...</div>';
+            
             // Only accessible for managers and deputy heads
             if (currentUserProfile?.role !== 'manager' && currentUserProfile?.role !== 'deputy_head') {
                 content.innerHTML = `
@@ -3541,45 +3544,90 @@ const buttons = [
                 `;
                 return;
             }
-            
 
-            const [archivedTasks, archivedInstallations] = await Promise.all([
-                supabase.from('tasks').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false }),
-                supabase.from('installations').select('*').in('status', ['done', 'received', 'postponed']).order('updated_at', { ascending: false })
-            ]);
-            
-            let html = `
-                <h2 style="margin-bottom: 16px">📁 Архив</h2>
-                <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,217,255,0.1)); border: 1px solid var(--success);">
-                    <p style="line-height: 1.8; margin: 0; color: var(--text);">
-                        Архив содержит все завершенные задачи и монтажи. Доступ к архиву имеют руководители и зам. начальника отдела.
-                    </p>
-                </div>
-            `;
-            
-            // Archived Tasks Section
-            html += `<h3 class="section-title" style="margin-top: 16px;">✓ Завершенные задачи (${archivedTasks?.length || 0})</h3>`;
-            
-            if (!archivedTasks || archivedTasks.length === 0) {
-                html += '<div class="empty-state"><div class="empty-state-icon">✓</div><p>Нет завершенных задач</p></div>';
-            } else {
-                archivedTasks.forEach(task => {
-                    html += renderTaskCard(task);
-                });
+            try {
+                const [archivedTasksResult, archivedInstallationsResult] = await Promise.all([
+                    supabase.from('tasks').select('*').in('status', ['done', 'postponed']).order('updated_at', { ascending: false }),
+                    supabase.from('installations').select('*').in('status', ['done', 'postponed', 'received']).order('updated_at', { ascending: false })
+                ]);
+                
+                const archivedTasks = archivedTasksResult.data || [];
+                const archivedInstallations = archivedInstallationsResult.data || [];
+                
+                if (archivedTasksResult.error) {
+                    console.error('Error fetching archived tasks:', archivedTasksResult.error);
+                    throw archivedTasksResult.error;
+                }
+                
+                if (archivedInstallationsResult.error) {
+                    console.error('Error fetching archived installations:', archivedInstallationsResult.error);
+                    throw archivedInstallationsResult.error;
+                }
+
+                let html = `
+                    <h2 style="margin-bottom: 16px">📁 Архив</h2>
+                    <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,217,255,0.1)); border: 1px solid var(--success);">
+                        <p style="line-height: 1.8; margin: 0; color: var(--text);">
+                            Архив содержит все завершенные задачи и монтажи. Доступ к архиву имеют только руководители и зам. начальника отдела.
+                        </p>
+                    </div>
+                `;
+
+                // Archived Tasks Section
+                html += `<h3 class="section-title" style="margin-top: 16px;">✓ Завершенные задачи (${archivedTasks.length})</h3>`;
+
+                if (archivedTasks.length === 0) {
+                    html += '<div class="empty-state"><div class="empty-state-icon">✓</div><p>Нет завершенных задач</p></div>';
+                } else {
+                    // Enrich tasks with project info
+                    try {
+                        const enrichedTasks = await enrichTasks(archivedTasks);
+                        enrichedTasks.forEach(task => {
+                            html += renderTaskCard(task);
+                        });
+                    } catch (e) {
+                        console.error('Error enriching tasks:', e);
+                        archivedTasks.forEach(task => {
+                            html += renderTaskCard(task);
+                        });
+                    }
+                }
+
+                // Archived Installations Section
+                html += `<h3 class="section-title" style="margin-top: 24px;">⚙ Завершенные монтажи (${archivedInstallations.length})</h3>`;
+
+                if (archivedInstallations.length === 0) {
+                    html += '<div class="empty-state"><div class="empty-state-icon">⚙</div><p>Нет завершенных монтажей</p></div>';
+                } else {
+                    // Enrich installations with project info
+                    try {
+                        const enrichedInstallations = await enrichInstallations(archivedInstallations);
+                        enrichedInstallations.forEach(inst => {
+                            html += renderInstallationCard(inst);
+                        });
+                    } catch (e) {
+                        console.error('Error enriching installations:', e);
+                        archivedInstallations.forEach(inst => {
+                            html += renderInstallationCard(inst);
+                        });
+                    }
+                }
+
+                content.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading archive:', error);
+                content.innerHTML = `
+                    <h2 style="margin-bottom: 16px">📁 Архив</h2>
+                    <div class="card" style="background: rgba(255,51,102,0.1); border: 1px solid var(--danger);">
+                        <p style="color: var(--danger);">
+                            Ошибка загрузки архива: ${error.message}
+                        </p>
+                        <button class="btn btn-outline" onclick="renderArchive(document.getElementById('content'))" style="margin-top: 12px;">
+                            Повторить
+                        </button>
+                    </div>
+                `;
             }
-            
-            // Archived Installations Section
-            html += `<h3 class="section-title" style="margin-top: 24px;">⚙ Завершенные монтажи (${archivedInstallations?.length || 0})</h3>`;
-            
-            if (!archivedInstallations || archivedInstallations.length === 0) {
-                html += '<div class="empty-state"><div class="empty-state-icon">⚙</div><p>Нет завершенных монтажей</p></div>';
-            } else {
-                archivedInstallations.forEach(inst => {
-                    html += renderInstallationCard(inst);
-                });
-            }
-            
-            content.innerHTML = html;
         }
 
         // Show PR detail in modal - for managers (optimized)
@@ -5285,7 +5333,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         async function renderInfo(content) {
             const role = currentUserProfile?.role || 'worker';
             const roleName = currentUserProfile?.role === 'manager' ? 'Руководитель' : 
-                           (currentUserProfile?.role === 'deputy_head' ? 'Зам. начальника отдела' : 'Исполнитель');
+                           (currentUserProfile?.role === 'deputy_head' ? 'Зам. начальника отдела' : 'Исполнитель' );
             
             let html = `
                 <h2 style="margin-bottom: 16px">О приложении</h2>
@@ -5432,7 +5480,6 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                     <ul style="line-height: 1.8; padding-left: 20px;">
                         <li>Приложение адаптировано для телефонов</li>
                         <li>Свайп влево для удаления (где доступно)</li>
-                        <li>Нижняя навигационная панель</li>
                         <li>Сохранение сессии - не нужно логиниться заново</li>
                     </ul>
                 </div>
@@ -5440,7 +5487,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 <div class="card" style="margin-top: 16px; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(0,255,136,0.1)); border: 1px solid var(--accent);">
                     <h3 class="section-title">💬 Нужна помощь?</h3>
                     <p style="line-height: 1.8;">
-                        По всем вопросам обращайтесь к администратору системы или руководителю проекта.
+                        По всем вопросам обращайтесь к богу. Он поможет.
                     </p>
                 </div>
             `;
