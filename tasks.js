@@ -16,6 +16,7 @@ router.get('/', authenticateToken, async (req, res) => {
 				project:projects(id, name),
 				assignee:users!tasks_assignee_id_fkey(id, name, email)
 			`)
+			.eq('is_archived', false)
 			.order('created_at', { ascending: false });
 
 		if (project_id) {

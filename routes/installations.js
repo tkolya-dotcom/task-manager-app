@@ -16,6 +16,7 @@ router.get('/', authenticateToken, async (req, res) => {
         project:projects(id, name),
         assignee:users!installations_assignee_id_fkey(id, name, email)
       `)
+      .eq('is_archived', false)
       .order('scheduled_at', { ascending: true });
 
     if (project_id) {
