@@ -2270,6 +2270,110 @@ const buttons = [
         }
         
         // ============================================================
+        // PULL TO REFRESH
+        // ============================================================
+        // Используем существующие переменные touchStartY и touchCurrentY из swipe logic
+        const refreshThreshold = 150; // пикселей для активации обновления
+        let isRefreshing = false;
+        
+        document.addEventListener('touchstart', function(e) {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', function(e) {
+            touchCurrentY = e.touches[0].clientY;
+            const diff = touchCurrentY - touchStartY;
+            
+            // Показываем индикатор обновления при тяге вниз
+          if (diff > 0 && window.scrollY === 0) {
+                e.preventDefault(); // предотвращаем стандартную прокрутку
+                const progress= Math.min(diff / refreshThreshold, 1);
+              updateRefreshIndicator(progress);
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchend', async function() {
+            const diff = touchCurrentY - touchStartY;
+            
+          if (diff > refreshThreshold && !isRefreshing && window.scrollY === 0) {
+                await refreshAll();
+            }
+            hideRefreshIndicator();
+            touchStartY = 0;
+            touchCurrentY = 0;
+        });
+        
+        function updateRefreshIndicator(progress) {
+            let indicator = document.getElementById('refresh-indicator');
+          if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'refresh-indicator';
+                indicator.style.cssText = `
+                    position: fixed;
+                    top: -60px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: var(--accent);
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 0 0 20px 20px;
+                    z-index: 10000;
+                    transition: top 0.3s ease;
+                    font-weight: 600;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                indicator.innerHTML = '⟳ Обновление...';
+                document.body.appendChild(indicator);
+            }
+            
+            const pullProgress = Math.round(progress * 100);
+            indicator.style.top = `${-60 + (progress * 60)}px`;
+            indicator.innerHTML = pullProgress < 100 ? `⟳ Тяните ещё (${pullProgress}%)` : '✓ Отпустите для обновления';
+        }
+        
+        function hideRefreshIndicator() {
+            const indicator = document.getElementById('refresh-indicator');
+          if (indicator) {
+                indicator.style.top = '-60px';
+                setTimeout(() => {
+                  if (indicator.parentNode) {
+                        indicator.remove();
+                    }
+                }, 300);
+            }
+        }
+        
+        async function refreshAll() {
+          if (isRefreshing) return;
+            isRefreshing = true;
+            
+            console.log('Pull to refresh triggered');
+            showToast('🔄 Обновление данных...');
+            
+            try {
+                // Перезагружаем текущую страницу
+              if (currentView) {
+                    await navigate(currentView);
+                } else {
+                    await navigate('dashboard');
+                }
+                
+                // Обновляем данные пользователей онлайн
+              if (typeof loadUserStatus === 'function') {
+                    await loadUserStatus();
+                }
+                
+                showToast('✅ Данные обновлены');
+            } catch (error) {
+                console.error('Refresh error:', error);
+                showToast('❌ Ошибка обновления: ' + error.message);
+            } finally {
+                isRefreshing = false;
+                hideRefreshIndicator();
+            }
+        }
+        
+        // ============================================================
         // DASHBOARD
         // ============================================================
         async function renderDashboard(content) {
@@ -4878,10 +4982,20 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 if (id_sk1) installationData.id_sk1 = parseInt(id_sk1);
                 if (naimenovanie_sk1) installationData.naimenovanie_sk1 = naimenovanie_sk1;
                 if (status_oborudovaniya1) installationData.status_oborudovaniya1 = status_oborudovaniya1;
-                if (tip_sk_po_dogovoru1) installationData.tip_sk_po_dogovoru1 = parseInt(tip_sk_po_dogovoru1);
-                if (planovaya_data_str && !isNaN(new Date(planovaya_data_str).getTime())) {
-                    const planovaya_date = new Date(planovaya_data_str);
-                    installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
+                if (tip_sk_po_dogovoru1) installationData.tip_sk_po_dogovoru1 = tip_sk_po_dogovoru1.toString();
+                if (planovaya_data_str && planovaya_data_str.trim() !== '') {
+                    // Parse Russian date format DD.MM.YYYY
+                   const parts = planovaya_data_str.split('.');
+                  if (parts.length === 3) {
+                        const day = parseInt(parts[0], 10);
+                       const month = parseInt(parts[1], 10) - 1; // months are 0-indexed in JS
+                       const year = parseInt(parts[2], 10);
+                       const planovaya_date = new Date(year, month, day);
+                       
+                     if (!isNaN(planovaya_date.getTime())) {
+                            installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
+                        }
+                    }
                 }
                 
                 console.log('Creating installation:', installationData);
