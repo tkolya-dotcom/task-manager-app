@@ -19,6 +19,8 @@ const InstallationDetail = () => {
   const loadData = async () => {
     try {
       const data = await installationsApi.getById(id);
+      console.log('Installation data received:', data);
+      console.log('All installation fields:', JSON.stringify(data.installation, null, 2));
       setInstallation(data.installation);
     } catch (err) {
       setError(err.message);
@@ -112,30 +114,37 @@ const InstallationDetail = () => {
             </select>
           </p>
           <p><strong>Дата монтажа:</strong> {installation.scheduled_at ? new Date(installation.scheduled_at).toLocaleString('ru-RU') : '-'}</p>
+          <p><strong>Плановая дата:</strong> {installation.planovaya_data_1_kv_2026 ? new Date(installation.planovaya_data_1_kv_2026).toLocaleDateString('ru-RU') : '-'}</p>
           <p><strong>Адрес:</strong> {installation.address || '-'}</p>
+          <p><strong>Заявка на материалы:</strong> {installation.purchaseRequests && installation.purchaseRequests.length > 0 
+            ? <span style={{ color: 'green', fontWeight: 'bold' }}>✓ Создана ({installation.purchaseRequests.length})</span>
+            : <span style={{ color: 'orange' }}>⊘ Не создана</span>}</p>
           <p><strong>Создан:</strong> {new Date(installation.created_at).toLocaleDateString('ru-RU')}</p>
           
-          {/* SK Fields Display */}
-          {(installation.id_ploshadki || installation.servisnyy_id || installation.rayon || installation.id_sk1) && (
+          {/* SK Fields Display - проверка на существование полей */}
+          {(installation.id_ploshadki !== null && installation.id_ploshadki !== undefined) || 
+           (installation.servisnyy_id !== null && installation.servisnyy_id !== undefined) || 
+           (installation.rayon !== null && installation.rayon !== undefined) || 
+           (installation.id_sk1 !== null && installation.id_sk1 !== undefined) ? (
             <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
               <h4 style={{ marginTop: 0 }}>Информация о площадке (СК)</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {installation.id_ploshadki && (
+                {installation.id_ploshadki !== null && installation.id_ploshadki !== undefined && (
                   <p><strong>ID площадки:</strong> {installation.id_ploshadki}</p>
                 )}
-                {installation.servisnyy_id && (
+                {installation.servisnyy_id !== null && installation.servisnyy_id !== undefined && (
                   <p><strong>Сервисный ID:</strong> {installation.servisnyy_id}</p>
                 )}
-                {installation.rayon && (
+                {installation.rayon !== null && installation.rayon !== undefined && (
                   <p><strong>Район:</strong> {installation.rayon}</p>
                 )}
-                {installation.planovaya_data_1_kv_2026 && (
+                {installation.planovaya_data_1_kv_2026 !== null && installation.planovaya_data_1_kv_2026 !== undefined && (
                   <p><strong>Плановая дата 1 кв. 2026:</strong> {installation.planovaya_data_1_kv_2026}</p>
                 )}
               </div>
               
               {/* SK1 */}
-              {installation.id_sk1 && (
+              {installation.id_sk1 !== null && installation.id_sk1 !== undefined && (
                 <div style={{ marginTop: '15px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #1</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -148,7 +157,7 @@ const InstallationDetail = () => {
               )}
               
               {/* SK2 */}
-              {installation.id_sk2 && (
+              {installation.id_sk2 !== null && installation.id_sk2 !== undefined && (
                 <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #2</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -161,7 +170,7 @@ const InstallationDetail = () => {
               )}
               
               {/* SK3 */}
-              {installation.id_sk3 && (
+              {installation.id_sk3 !== null && installation.id_sk3 !== undefined && (
                 <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #3</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -174,7 +183,7 @@ const InstallationDetail = () => {
               )}
               
               {/* SK4 */}
-              {installation.id_sk4 && (
+              {installation.id_sk4 !== null && installation.id_sk4 !== undefined && (
                 <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #4</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -187,7 +196,7 @@ const InstallationDetail = () => {
               )}
               
               {/* SK5 */}
-              {installation.id_sk5 && (
+              {installation.id_sk5 !== null && installation.id_sk5 !== undefined && (
                 <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #5</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -200,7 +209,7 @@ const InstallationDetail = () => {
               )}
               
               {/* SK6 */}
-              {installation.id_sk6 && (
+              {installation.id_sk6 !== null && installation.id_sk6 !== undefined && (
                 <div style={{ marginTop: '10px', padding: '10px', background: 'white', borderRadius: '4px' }}>
                   <h5 style={{ marginTop: 0, marginBottom: '10px' }}>СК #6</h5>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
