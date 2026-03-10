@@ -2965,6 +2965,40 @@ const buttons = [
                 `;
             }
             
+           // Блок с комментариями
+          html += `
+              <div class="card" style="margin-bottom: 16px;">
+                  <h3 class="section-title">💬 Комментарии</h3>
+                  
+                  <!-- Редактор комментариев -->
+                  <div style="margin-bottom:12px">
+                      <div style="display:flex;gap:8px;margin-bottom:8px">
+                          <button onclick="formatComment('bold')" title="Жирный" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer"><b>B</b></button>
+                          <button onclick="formatComment('italic')" title="Курсив" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer"><i>I</i></button>
+                          <button onclick="formatComment('code')" title="Код" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;font-family:monospace">&lt;/&gt;</button>
+                          <button onclick="toggleEmojiPicker()" title="Эмодзи" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer">😀</button>
+                          <button onclick="attachFile()" title="Прикрепить файл" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer">📎</button>
+                      </div>
+                      <div id="emojiPicker" style="display:none;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding:8px;background:#f9f9f9;border-radius:4px"></div>
+                      <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="handleFileSelect(event)"/>
+                      <div id="filePreview"></div>
+                      <textarea id="commentInput" placeholder="Введите комментарий... Используйте @ для упоминания пользователей. Enter для отправки." 
+                                style="width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit;resize:vertical" 
+                                onkeypress="if(event.keyCode===13 &amp;&amp; !event.shiftKey){event.preventDefault();sendTaskComment('${task.id}')}"></textarea>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                          <div style="font-size:11px;color:var(--text-muted)">Поддерживается: **жирный**, *курсив*, `код`, > цитата</div>
+                          <button class="btn" onclick="sendTaskComment('${task.id}')">Отправить</button>
+                      </div>
+                  </div>
+                  
+                  <!-- Список комментариев -->
+                  <div id="taskCommentsList" style="max-height:500px;overflow-y:auto"></div>
+              </div>
+          `;
+          
+         // Загружаем и отображаем комментарии
+        loadAndRenderTaskComments(task.id);
+            
             if (prs && prs.length > 0) {
                 html += `<h3 class="section-title">Заявки на материалы (${prs.length})</h3>`;
                 prsWithDetails.forEach(pr => {
@@ -3282,32 +3316,6 @@ const buttons = [
                             </div>
                         `;
                     })()}
-                    
-                    <!-- Тип по договору - отображаем все СК -->
-                    ${(inst.naimenovanie_sk1 || inst.naimenovanie_sk2 || inst.naimenovanie_sk3 || inst.naimenovanie_sk4 || inst.naimenovanie_sk5 || inst.naimenovanie_sk6) ? `
-                        <div style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);margin-top:8px;">
-                            <strong>Марка/Модель СК:</strong>
-                            ${inst.naimenovanie_sk1 ? `<div style="margin-top:4px;">СК1: ${inst.naimenovanie_sk1}</div>` : ''}
-                            ${inst.naimenovanie_sk2 ? `<div style="margin-top:4px;">СК2: ${inst.naimenovanie_sk2}</div>` : ''}
-                            ${inst.naimenovanie_sk3 ? `<div style="margin-top:4px;">СК3: ${inst.naimenovanie_sk3}</div>` : ''}
-                            ${inst.naimenovanie_sk4 ? `<div style="margin-top:4px;">СК4: ${inst.naimenovanie_sk4}</div>` : ''}
-                            ${inst.naimenovanie_sk5 ? `<div style="margin-top:4px;">СК5: ${inst.naimenovanie_sk5}</div>` : ''}
-                            ${inst.naimenovanie_sk6 ? `<div style="margin-top:4px;">СК6: ${inst.naimenovanie_sk6}</div>` : ''}
-                        </div>
-                    ` : ''}
-                    
-                    <!-- Тип по договору - отображаем все СК -->
-                    ${(inst.tip_sk_po_dogovoru1 || inst.tip_sk_po_dogovoru2 || inst.tip_sk_po_dogovoru3 || inst.tip_sk_po_dogovoru4 || inst.tip_sk_po_dogovoru5 || inst.tip_sk_po_dogovoru6) ? `
-                        <div style="background:rgba(0,255,136,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--success);margin-top:8px;">
-                            <strong>Тип по договору:</strong>
-                            ${inst.tip_sk_po_dogovoru1 ? `<div style="margin-top:4px;">СК1: ${inst.tip_sk_po_dogovoru1}</div>` : ''}
-                            ${inst.tip_sk_po_dogovoru2 ? `<div style="margin-top:4px;">СК2: ${inst.tip_sk_po_dogovoru2}</div>` : ''}
-                            ${inst.tip_sk_po_dogovoru3 ? `<div style="margin-top:4px;">СК3: ${inst.tip_sk_po_dogovoru3}</div>` : ''}
-                            ${inst.tip_sk_po_dogovoru4 ? `<div style="margin-top:4px;">СК4: ${inst.tip_sk_po_dogovoru4}</div>` : ''}
-                            ${inst.tip_sk_po_dogovoru5 ? `<div style="margin-top:4px;">СК5: ${inst.tip_sk_po_dogovoru5}</div>` : ''}
-                            ${inst.tip_sk_po_dogovoru6 ? `<div style="margin-top:4px;">СК6: ${inst.tip_sk_po_dogovoru6}</div>` : ''}
-                        </div>
-                    ` : ''}
                     
                     ${inst.status_oborudovaniya1 ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya1}</div>` : ''}
                     ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${typeof inst.planovaya_data_1_kv_2026 === 'number' ? new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU') : new Date(inst.planovaya_data_1_kv_2026).toLocaleDateString('ru-RU')}</div>` : ''}
@@ -6205,5 +6213,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         // Start the app
         initApp();
     </script>
+    
+    <!-- Подключение системы комментариев -->
+    <script src="comment_system.js"></script>
 </body>
 </html>
