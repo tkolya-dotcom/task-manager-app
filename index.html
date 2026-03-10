@@ -6229,7 +6229,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
           try {
             const { data: comments, error } = await supabase
               .from('comments')
-              .select(`*,users(name, email),parent_comment(id,user_id,message,users(name))`)
+              .select(`*,users(name, email)`)
               .eq('resource_id', taskId)
               .eq('resource_type', 'task')
               .order('created_at', { ascending: true });
@@ -6247,11 +6247,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
               const dateStr = new Date(comment.created_at).toLocaleString('ru-RU');
               const isEdited = comment.is_edited || false;
               const formattedMessage = formatCommentText(comment.message);
-              const isReply = !!comment.parent_comment_id;
-              const replyStyle = isReply ? 'margin-left:40px;border-left:3px solid var(--accent);padding-left:12px;' : '';
               
-              html += `<div style="background:#f9f9f9;padding:12px;margin-bottom:10px;border-radius:6px;${replyStyle}">
-                ${isReply ? `<div style="font-size:11px;color:var(--accent);margin-bottom:6px;">↪ Ответ на комментарий</div>` : ''}
+              html += `<div style="background:#f9f9f9;padding:12px;margin-bottom:10px;border-radius:6px">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                   <div style="display:flex;align-items:center;gap:8px">
                     <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--success));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px">${(comment.users?.name || 'А')[0].toUpperCase()}</div>
@@ -6263,7 +6260,6 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 <div style="color:var(--text);line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
                 ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:white;border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
                 <div style="display:flex;gap:8px;margin-top:8px">
-                  ${!isReply ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent)" onclick="showReplyForm('${comment.id}')">💬 Ответить</button>` : ''}
                   ${isOwnComment ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-muted);border:1px solid var(--text-muted)" onclick="editComment('${comment.id}', '${taskId}')">✏️ Редактировать</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:11px;background:#ef4444;border:none;color:white" onclick="deleteComment('${comment.id}', '${taskId}')">🗑 Удалить</button>` : ''}
                 </div>
               </div>`;
