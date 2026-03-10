@@ -2982,11 +2982,11 @@ const buttons = [
                       <div id="emojiPicker" style="display:none;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding:8px;background:#f9f9f9;border-radius:4px"></div>
                       <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="handleFileSelect(event)"/>
                       <div id="filePreview"></div>
-                      <textarea id="commentInput" placeholder="Введите комментарий... Используйте @ для упоминания пользователей. Enter для отправки." 
+                      <textarea id="commentInput" placeholder="Введите комментарий... И молимся что бы кто то ответил."
                                 style="width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit;resize:vertical" 
                                 onkeypress="if(event.keyCode===13 &amp;&amp; !event.shiftKey){event.preventDefault();sendTaskComment('${task.id}')}"></textarea>
                       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-                          <div style="font-size:11px;color:var(--text-muted)">Поддерживается: **жирный**, *курсив*, код, > цитата</div>
+                          <div style="font-size:11px;color:var(--text-muted)">Поддерживается: **жирный**, *курсив*, Молитвы, > </div>
                           <button class="btn" onclick="sendTaskComment('${task.id}')">Отправить</button>
                       </div>
                   </div>
