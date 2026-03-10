@@ -2284,6 +2284,7 @@ const buttons = [
             let isRefreshing = false;
         
         document.addEventListener('touchstart', function(e) {
+          console.log('Touch start detected');
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
         
@@ -2381,9 +2382,7 @@ const buttons = [
         }
         
         // Запускаем pull-to-refresh после загрузки страницы
-       document.addEventListener('DOMContentLoaded', function() {
-           window.setupPullToRefresh();
-       });
+       window.setupPullToRefresh();
     };
         
         // ============================================================
@@ -6106,7 +6105,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 users.forEach(user => {
                     // Consider online if is_online is true OR last_seen was within 2 minutes
                     const lastSeen = user.last_seen_at ? new Date(user.last_seen_at) : null;
-                    const isRecentlyActive = lastSeen && (now - lastSeen) < 10000; // 10 seconds instead of 2 minutes
+                    const isRecentlyActive = lastSeen && (now - lastSeen) < 30000; // 30 seconds window
                     
                     if (user.is_online || isRecentlyActive) {
                         onlineUsers.push(user);
