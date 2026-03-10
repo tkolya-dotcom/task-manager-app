@@ -3037,11 +3037,18 @@ const buttons = [
             if (!inst) return;
             
             console.log('Installation data:', inst);
-            console.log('SK fields:', {
+            console.log('SK fields (old format - should be null):', {
                 naimenovanie_sk: inst.naimenovanie_sk,
                 tip_sk_po_dogovoru: inst.tip_sk_po_dogovoru,
                 id_sk: inst.id_sk,
                 status_oborudovaniya: inst.status_oborudovaniya
+            });
+            console.log('SK fields #1 (new format - should have data):', {
+                naimenovanie_sk1: inst.naimenovanie_sk1,
+                tip_sk_po_dogovoru1: inst.tip_sk_po_dogovoru1,
+                id_sk1: inst.id_sk1,
+                status_oborudovaniya1: inst.status_oborudovaniya1,
+                planovaya_data_1_kv_2026: inst.planovaya_data_1_kv_2026
             });
 
             let projectName = '-';
@@ -3133,7 +3140,7 @@ const buttons = [
                     ` : ''}
                     
                     ${inst.status_oborudovaniya1 ? `<div class="detail-meta"><strong>Статус оборудования:</strong> ${inst.status_oborudovaniya1}</div>` : ''}
-                    ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU')}</div>` : ''}
+                    ${inst.planovaya_data_1_kv_2026 ? `<div class="detail-meta"><strong>Плановая дата:</strong> ${typeof inst.planovaya_data_1_kv_2026 === 'number' ? new Date(inst.planovaya_data_1_kv_2026 * 1000).toLocaleDateString('ru-RU') : new Date(inst.planovaya_data_1_kv_2026).toLocaleDateString('ru-RU')}</div>` : ''}
                     <div class="detail-meta"><strong>Дата:</strong> ${date}</div>
                     <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
                     <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span></div>
@@ -4839,11 +4846,11 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const servisnyy_id = document.getElementById('instServisnyyId')?.value;
             const rayon = document.getElementById('instRayon')?.value;
             
-            // Get SK fields (may be in dynamic rows)
-            const id_sk = document.getElementById('instIdSk')?.value;
-            const naimenovanie_sk = document.getElementById('instNaimenovanieSk')?.value;
-            const status_oborudovaniya = document.getElementById('instStatusOborudovaniya')?.value;
-            const tip_sk_po_dogovoru = document.getElementById('instTipSkPoDogovoru')?.value;
+            // Get SK fields from dynamic rows (СК #1)
+            const id_sk1 = document.getElementById('sk_id_0')?.value || document.getElementById('instIdSk')?.value;
+            const naimenovanie_sk1 = document.getElementById('sk_name_0')?.value || document.getElementById('instNaimenovanieSk')?.value;
+            const status_oborudovaniya1 = document.getElementById('sk_status_0')?.value || document.getElementById('instStatusOborudovaniya')?.value;
+            const tip_sk_po_dogovoru1 = document.getElementById('sk_tip_0')?.value || document.getElementById('instTipSkPoDogovoru')?.value;
             
             const planovaya_data_str = document.getElementById('instPlanovayaData')?.value;
             
@@ -4868,10 +4875,10 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 if (id_ploshadki) installationData.id_ploshadki = parseInt(id_ploshadki);
                 if (servisnyy_id) installationData.servisnyy_id = servisnyy_id;
                 if (rayon) installationData.rayon = rayon;
-                if (id_sk) installationData.id_sk = parseInt(id_sk);
-                if (naimenovanie_sk) installationData.naimenovanie_sk = naimenovanie_sk;
-                if (status_oborudovaniya) installationData.status_oborudovaniya = status_oborudovaniya;
-                if (tip_sk_po_dogovoru) installationData.tip_sk_po_dogovoru = parseInt(tip_sk_po_dogovoru);
+                if (id_sk1) installationData.id_sk1 = parseInt(id_sk1);
+                if (naimenovanie_sk1) installationData.naimenovanie_sk1 = naimenovanie_sk1;
+                if (status_oborudovaniya1) installationData.status_oborudovaniya1 = status_oborudovaniya1;
+                if (tip_sk_po_dogovoru1) installationData.tip_sk_po_dogovoru1 = parseInt(tip_sk_po_dogovoru1);
                 if (planovaya_data_str && !isNaN(new Date(planovaya_data_str).getTime())) {
                     const planovaya_date = new Date(planovaya_data_str);
                     installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
