@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очистка кэша</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #00d9ff;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #00b8d9;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00d9ff;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🧹 Очистка кэша приложения</h1>
+        <p>Эта страница очистит весь кэш браузера для приложения:</p>
+        <ul>
+            <li>LocalStorage</li>
+            <li>SessionStorage</li>
+            <li>Service Worker кэш</li>
+            <li>Кэш изображений</li>
+        </ul>
+        
+        <button class="btn" onclick="clearCache()">🗑 Очистить кэш</button>
+        <button class="btn btn-secondary" onclick="window.location.href='index.html'">↩ Вернуться в приложение</button>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="log" class="log"></div>
+    </div>
+    
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const logItem = document.createElement('div');
+            logItem.className = 'log-item';
+            logItem.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(logItem);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        async function clearCache() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '⏳ Очистка...';
+            
+            log('Начало очистки кэша...');
+            
+            try {
+                // 1. Очистка LocalStorage
+                localStorage.clear();
+                log('✅ LocalStorage очищен');
+                
+                // 2. Очистка SessionStorage
+                sessionStorage.clear();
+                log('✅ SessionStorage очищен');
+                
+                // 3. Очистка Service Worker кэша
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        log(`✅ Кэш удален: ${cacheName}`);
+                    }
+                } else {
+                    log('ℹ️ Service Worker кэш недоступен');
+                }
+                
+                // 4. Очистка кэша изображений
+                if ('caches' in window) {
+                    const imageCache = await caches.open('images');
+                    await imageCache.keys().then(keys => {
+                        keys.forEach(key => imageCache.delete(key));
+                    });
+                    log('✅ Кэш изображений очищен');
+                }
+                
+                // 5. Принудительная перезагрузка
+                log('✅ Все кэши очищены!');
+                statusDiv.innerHTML = '✅ Кэш успешно очищен! Перезагрузка...';
+                
+                setTimeout(() => {
+                    log('Перезагрузка страницы...');
+                    window.location.href = 'index.html?nocache=' + Date.now();
+                }, 2000);
+                
+            } catch (error) {
+                log('❌ Ошибка: ' + error.message);
+                statusDiv.innerHTML = '❌ Ошибка очистки: ' + error.message;
+                statusDiv.style.background = '#f8d7da';
+                statusDiv.style.color = '#721c24';
+                statusDiv.style.borderColor = '#f5c6cb';
+            }
+        }
+        
+        // Автоматическая очистка при загрузке
+        window.onload = function() {
+            log('Страница загрузки готова');
+            log('Нажмите "Очистить кэш" для начала');
+        };
+    </script>
+</body>
+</html>

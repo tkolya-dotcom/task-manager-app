@@ -5006,7 +5006,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         // Close suggestions when clicking outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('#instAddress') && !e.target.closest('#addressSuggestions')) {
-                document.getElementById('addressSuggestions').innerHTML = '';
+                const suggestionsEl = document.getElementById('addressSuggestions');
+                if (suggestionsEl) suggestionsEl.innerHTML = '';
             }
         });
         

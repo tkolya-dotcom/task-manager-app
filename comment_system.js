@@ -3,6 +3,9 @@
  * Добавьте этот код в index.html перед закрывающим тегом </body>
  */
 
+// Получаем доступ к supabase из глобальной области
+const supabase = window.supabase;
+
 // === Глобальные переменные для редактора комментариев ===
 let currentReplyToId = null;
 let currentEditingCommentId = null;
