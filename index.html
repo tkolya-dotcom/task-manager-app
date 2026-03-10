@@ -3217,7 +3217,7 @@ const buttons = [
                     ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
                     ${(inst.id_sk || inst.id_sk1) ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk || inst.id_sk1}</div>` : ''}
                     
-                    <!-- Отображаем информацию по каждому СК отдельно -->
+                    <!-- Отображаем информацию по каждому СК текстом -->
                     ${(() => {
                         const sks = [];
                         for (let i = 1; i <= 6; i++) {
@@ -3234,10 +3234,9 @@ const buttons = [
                        if (sks.length === 0) return '';
                         
                        return `
-                            <div style="margin-top:16px;padding:16px;background:rgba(0,217,255,0.08);border-radius:8px;border-left:4px solid var(--accent)">
-                                <h4 style="margin:0 0 12px 0;color:var(--accent)">Кондиционеры (${sks.length} шт)</h4>
-                                ${sks.map((sk, idx) => `
-                                    <div style="margin-bottom:${idx < sks.length-1 ? '8px' : '0'}">
+                            <div style="margin-top:8px">
+                                ${sks.map(sk => `
+                                    <div>
                                         <strong>СК#${sk.id}:</strong>
                                         ${sk.idSk ? `ID: ${sk.idSk}` : ''}
                                         ${sk.naimenovanie ? `| Наименование: ${sk.naimenovanie}` : ''}
