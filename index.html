@@ -1453,6 +1453,7 @@
         
         // Initialize Supabase client (kept for potential fallback usage)
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = supabase;
         
         // ============================================================
         // STATE
@@ -3020,7 +3021,14 @@ const buttons = [
             }
             
             document.getElementById('content').innerHTML = html;
-        }
+            
+           // Загружаем и отображаем комментарии после рендеринга
+          if (typeof loadAndRenderTaskComments === 'function') {
+             loadAndRenderTaskComments(task.id);
+         } else {
+             console.error('loadAndRenderTaskComments not loaded!');
+         }
+     }
         
         window.updateTaskStatus = async function(taskId) {
             const status = document.getElementById('taskStatus').value;
