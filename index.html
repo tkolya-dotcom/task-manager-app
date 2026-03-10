@@ -3236,15 +3236,13 @@ const buttons = [
                        return `
                             <div style="margin-top:16px;padding:16px;background:rgba(0,217,255,0.08);border-radius:8px;border-left:4px solid var(--accent)">
                                 <h4 style="margin:0 0 12px 0;color:var(--accent)">Кондиционеры (${sks.length} шт)</h4>
-                                ${sks.map(sk => `
-                                    <div style="background:white;padding:12px;margin-bottom:8px;border-radius:6px">
-                                        <div style="color:var(--accent);font-weight:700;margin-bottom:6px">СК #${sk.id}</div>
-                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-                                            ${sk.idSk ? `<div><strong>ID СК:</strong> ${sk.idSk}</div>` : ''}
-                                            ${sk.naimenovanie ? `<div><strong>Наименование:</strong> ${sk.naimenovanie}</div>` : ''}
-                                            ${sk.status ? `<div><strong>Статус:</strong> ${sk.status}</div>` : ''}
-                                            ${sk.tip ? `<div><strong>Тип по договору:</strong> ${sk.tip}</div>` : ''}
-                                        </div>
+                                ${sks.map((sk, idx) => `
+                                    <div style="margin-bottom:${idx < sks.length-1 ? '8px' : '0'}">
+                                        <strong>СК#${sk.id}:</strong>
+                                        ${sk.idSk ? `ID: ${sk.idSk}` : ''}
+                                        ${sk.naimenovanie ? `| Наименование: ${sk.naimenovanie}` : ''}
+                                        ${sk.status ? `| Статус: ${sk.status}` : ''}
+                                        ${sk.tip ? `| Тип: ${sk.tip}` : ''}
                                     </div>
                                 `).join('')}
                             </div>
@@ -4984,11 +4982,36 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             const servisnyy_id = document.getElementById('instServisnyyId')?.value;
             const rayon = document.getElementById('instRayon')?.value;
             
-            // Get SK fields from dynamic rows (СК #1)
-            const id_sk1 = document.getElementById('sk_id_0')?.value || document.getElementById('instIdSk')?.value;
-            const naimenovanie_sk1 = document.getElementById('sk_name_0')?.value || document.getElementById('instNaimenovanieSk')?.value;
-            const status_oborudovaniya1 = document.getElementById('sk_status_0')?.value || document.getElementById('instStatusOborudovaniya')?.value;
-            const tip_sk_po_dogovoru1 = document.getElementById('sk_tip_0')?.value || document.getElementById('instTipSkPoDogovoru')?.value;
+            // Get SK fields from dynamic rows (all 6 SKs)
+            const skData = {};
+            for (let i = 0; i < 6; i++) {
+                const idSk = document.getElementById(`sk_id_${i}`)?.value;
+                const naimenovanie = document.getElementById(`sk_name_${i}`)?.value;
+                const status = document.getElementById(`sk_status_${i}`)?.value;
+                const tip = document.getElementById(`sk_tip_${i}`)?.value;
+                
+              if (idSk || naimenovanie) {
+                   skData[`id_sk${i+1}`] = idSk ? parseInt(idSk) : null;
+                   skData[`naimenovanie_sk${i+1}`] = naimenovanie || null;
+                   skData[`status_oborudovaniya${i+1}`] = status || null;
+                   skData[`tip_sk_po_dogovoru${i+1}`] = tip ? tip.toString() : null;
+               }
+            }
+            
+           // Fallback to old fields if no dynamic rows
+          if (Object.keys(skData).length === 0) {
+               const id_sk1 = document.getElementById('instIdSk')?.value;
+               const naimenovanie_sk1 = document.getElementById('instNaimenovanieSk')?.value;
+               const status_oborudovaniya1 = document.getElementById('instStatusOborudovaniya')?.value;
+               const tip_sk_po_dogovoru1 = document.getElementById('instTipSkPoDogovoru')?.value;
+               
+             if (id_sk1 || naimenovanie_sk1) {
+                  skData.id_sk1 = id_sk1 ? parseInt(id_sk1) : null;
+                  skData.naimenovanie_sk1 = naimenovanie_sk1 || null;
+                  skData.status_oborudovaniya1 = status_oborudovaniya1 || null;
+                  skData.tip_sk_po_dogovoru1 = tip_sk_po_dogovoru1 ? tip_sk_po_dogovoru1.toString() : null;
+              }
+           }
             
             const planovaya_data_str = document.getElementById('instPlanovayaData')?.value;
             
