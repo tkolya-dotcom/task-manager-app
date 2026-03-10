@@ -2269,12 +2269,10 @@ const buttons = [
             }
         }
         
-        // ============================================================
-        // PULL TO REFRESH
-        // ============================================================
-        // Используем существующие переменные touchStartY и touchCurrentY из swipe logic
-        const refreshThreshold = 150; // пикселей для активации обновления
-        let isRefreshing = false;
+        // Выносим обработчики pull-to-refresh на глобальный уровень
+        window.setupPullToRefresh = function() {
+            const refreshThreshold = 150;
+            let isRefreshing = false;
         
         document.addEventListener('touchstart', function(e) {
             touchStartY = e.touches[0].clientY;
@@ -2372,6 +2370,11 @@ const buttons = [
                 hideRefreshIndicator();
             }
         }
+        
+        // Запускаем pull-to-refresh после загрузки страницы
+       document.addEventListener('DOMContentLoaded', function() {
+           window.setupPullToRefresh();
+       });
         
         // ============================================================
         // DASHBOARD
@@ -5035,10 +5038,9 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 if (id_ploshadki) installationData.id_ploshadki = parseInt(id_ploshadki);
                 if (servisnyy_id) installationData.servisnyy_id = servisnyy_id;
                 if (rayon) installationData.rayon = rayon;
-                if (id_sk1) installationData.id_sk1 = parseInt(id_sk1);
-                if (naimenovanie_sk1) installationData.naimenovanie_sk1 = naimenovanie_sk1;
-                if (status_oborudovaniya1) installationData.status_oborudovaniya1 = status_oborudovaniya1;
-                if (tip_sk_po_dogovoru1) installationData.tip_sk_po_dogovoru1 = tip_sk_po_dogovoru1.toString();
+                
+                // Add all SK data from dynamic rows
+                Object.assign(installationData, skData);
                 if (planovaya_data_str && planovaya_data_str.trim() !== '') {
                     // Parse Russian date format DD.MM.YYYY
                    const parts = planovaya_data_str.split('.');
