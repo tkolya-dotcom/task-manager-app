@@ -1762,7 +1762,7 @@
                 if (currentUserProfile?.id) {
                     await updateUserStatus(true);
                 }
-            }, 30000); // 30 seconds
+            }, 8000); // 8 seconds instead of 30 for faster updates
         }
         
         function stopHeartbeat() {
@@ -1783,12 +1783,12 @@
                 clearInterval(userStatusInterval);
             }
             
-            // Update user statuses every 30 seconds
+            // Update user statuses every 15 seconds
             userStatusInterval = setInterval(() => {
                 if (currentView === 'dashboard') {
                     loadUserStatus();
                 }
-            }, 30000);
+            }, 10000); // 10 seconds instead  updates
         }
         
         // Handle visibility change (tab switching, browser close)
@@ -2101,6 +2101,13 @@
             
             // Check and show pending notifications for current user
             checkAndShowPendingNotifications();
+           
+          // Start periodic notification check every 30 seconds
+       if (!window.notificationCheckInterval) {
+              window.notificationCheckInterval = setInterval(() => {
+                  checkAndShowPendingNotifications();
+              }, 30000); // Check every 30 seconds
+          }
             
             // Load user statuses for dashboard
             loadUserStatus();
@@ -5887,7 +5894,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                 users.forEach(user => {
                     // Consider online if is_online is true OR last_seen was within 2 minutes
                     const lastSeen = user.last_seen_at ? new Date(user.last_seen_at) : null;
-                    const isRecentlyActive = lastSeen && (now - lastSeen) < 120000; // 2 minutes
+                    const isRecentlyActive = lastSeen && (now - lastSeen) < 10000; // 10 seconds instead of 2 minutes
                     
                     if (user.is_online || isRecentlyActive) {
                         onlineUsers.push(user);
@@ -5934,11 +5941,16 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                         if (user.last_seen_at) {
                             const lastSeen = new Date(user.last_seen_at);
                             const diffMs = now - lastSeen;
+                            const diffSecs = Math.floor(diffMs / 1000);
                             const diffMins = Math.floor(diffMs / 60000);
                             const diffHours = Math.floor(diffMs / 3600000);
                             const diffDays = Math.floor(diffMs / 86400000);
                             
-                            if (diffMins < 60) {
+                            if (diffSecs < 30) {
+                                  lastSeenText = 'только что';
+                              } else if (diffMins < 1) {
+                                  lastSeenText = `${diffSecs} сек. назад`;
+                              } else if (diffMins < 60) {
                                 lastSeenText = `${diffMins} мин. назад`;
                             } else if (diffHours < 24) {
                                 lastSeenText = `${diffHours} ч. назад`;
