@@ -2806,7 +2806,10 @@ const buttons = [
             return `
                 <div class="card card-clickable${overdueClass}" data-id="${task.id}" data-type="task" onclick="showTaskDetail('${task.id}')">
                     <div class="list-item-header">
-                        <div class="list-item-title">${task.title}</div>
+                        <div class="list-item-title">
+                            ${task.short_id ? `<span style="background:var(--accent);color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:6px">#${String(task.short_id).padStart(4, '0')}</span>` : ''}
+                            ${task.title}
+                        </div>
                         <span class="status status-${task.status}">${getStatusLabel(task.status)}</span>
                     </div>
                     <div class="list-item-subtitle">
@@ -2937,7 +2940,7 @@ const buttons = [
                     <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${task.status}">${getStatusLabel(task.status)}</span></div>
                     ${task.due_date ? `<div class="detail-meta"><strong>Срок:</strong> ${new Date(task.due_date).toLocaleDateString('ru-RU')}</div>` : ''}
                     ${task.status_changed_by ? `<div class="detail-meta"><strong>Статус изменён:</strong> ${task.status_changed_by?.name || 'Пользователь'} ${task.status_changed_at ? new Date(task.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
-                    <div class="detail-meta"><strong>ID:</strong> ${task.id}</div>
+                    <div class="detail-meta"><strong>ID:</strong> ${task.short_id ? String(task.short_id).padStart(4, '0') : task.id}</div>
                 </div>
             `;
             
@@ -3089,7 +3092,10 @@ const buttons = [
             return `
                 <div class="card card-clickable" data-id="${inst.id}" data-type="installation" onclick="window.showInstallationDetail('${inst.id}')">
                     <div class="list-item-header">
-                        <div class="list-item-title">${inst.title}</div>
+                        <div class="list-item-title">
+                            ${inst.short_id ? `<span style="background:var(--accent);color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:6px">#${String(inst.short_id).padStart(4, '0')}</span>` : ''}
+                            ${inst.title}
+                        </div>
                         <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span>
                     </div>
                     <div class="list-item-subtitle">
@@ -3115,6 +3121,15 @@ const buttons = [
 
             let html = `<h2 style="margin-bottom: 16px">Монтажи</h2>`;
 
+            // Поиск по короткому ID
+            html += `
+                <div style="margin-bottom:16px;">
+                    <input type="text" id="installationSearch" placeholder="Поиск по номеру (например, 0001)" 
+                           style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px"
+                           oninput="filterInstallationsByShortId(this.value)">
+                </div>
+            `;
+
             html += `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">`;
             const filterOptions = [
                 { value: 'all', label: 'Все' },
@@ -3135,6 +3150,15 @@ const buttons = [
             if (installations.length === 0) {
                 html += '<div class="empty-state"><div class="empty-state-icon">⚙</div><p>Нет монтажей</p></div>';
             } else {
+                // Фильтрация по короткому ID если есть поиск
+                const searchQuery = document.getElementById('installationSearch')?.value;
+                if (searchQuery && searchQuery.trim() !== '') {
+                    const searchNum = parseInt(searchQuery, 10);
+                    if (!isNaN(searchNum)) {
+                        installations = installations.filter(i => i.short_id === searchNum);
+                    }
+                }
+                
                 installations.forEach(inst => {
                     html += renderInstallationCard(inst);
                 });
@@ -3249,12 +3273,11 @@ const buttons = [
                        return `
                             <div style="margin-top:8px">
                                 ${sks.map(sk => `
-                                    <div>
-                                        <strong>СК#${sk.id}:</strong>
-                                        ${sk.idSk ? `ID: ${sk.idSk}` : ''}
-                                        ${sk.naimenovanie ? `| Наименование: ${sk.naimenovanie}` : ''}
-                                        ${sk.status ? `| Статус: ${sk.status}` : ''}
-                                        ${sk.tip ? `| Тип: ${sk.tip}` : ''}
+                                    <div style="margin-bottom:12px">
+                                        <div><strong>СК#${sk.id}:</strong> ID: ${sk.idSk || '-'}</div>
+                                        ${sk.naimenovanie ? `<div>${sk.naimenovanie}</div>` : ''}
+                                        ${sk.status ? `<div>Статус: ${sk.status}</div>` : ''}
+                                        ${sk.tip ? `<div>Тип: ${sk.tip}</div>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
@@ -3293,7 +3316,7 @@ const buttons = [
                     <div class="detail-meta"><strong>Исполнитель:</strong> ${assigneeName}</div>
                     <div class="detail-meta"><strong>Статус:</strong> <span class="status status-${inst.status}">${getStatusLabel(inst.status)}</span></div>
                     ${inst.status_changed_by ? `<div class="detail-meta"><strong>Статус изменён:</strong> ${inst.status_changed_by?.name || 'Пользователь'} ${inst.status_changed_at ? new Date(inst.status_changed_at).toLocaleString('ru-RU') : ''}</div>` : ''}
-                    <div class="detail-meta"><strong>ID:</strong> ${inst.id}</div>
+                    <div class="detail-meta"><strong>ID:</strong> ${inst.short_id ? String(inst.short_id).padStart(4, '0') : inst.id}</div>
                 </div>
             `;
 
