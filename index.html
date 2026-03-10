@@ -3217,7 +3217,41 @@ const buttons = [
                     ${inst.rayon ? `<div class="detail-meta"><strong>Район:</strong> ${inst.rayon}</div>` : ''}
                     ${(inst.id_sk || inst.id_sk1) ? `<div class="detail-meta"><strong>ID СК:</strong> ${inst.id_sk || inst.id_sk1}</div>` : ''}
                     
-                    <!-- Наименование СК (марка/модель) - отображаем все СК -->
+                    <!-- Отображаем информацию по каждому СК отдельно -->
+                    ${(() => {
+                        const sks = [];
+                        for (let i = 1; i <= 6; i++) {
+                            const idSk = inst[`id_sk${i}`];
+                            const naimenovanie = inst[`naimenovanie_sk${i}`];
+                            const status = inst[`status_oborudovaniya${i}`];
+                            const tip = inst[`tip_sk_po_dogovoru${i}`];
+                            
+                           if (idSk || naimenovanie) {
+                                sks.push({ id: i, idSk, naimenovanie, status, tip });
+                            }
+                        }
+                        
+                       if (sks.length === 0) return '';
+                        
+                       return `
+                            <div style="margin-top:16px;padding:16px;background:rgba(0,217,255,0.08);border-radius:8px;border-left:4px solid var(--accent)">
+                                <h4 style="margin:0 0 12px 0;color:var(--accent)">Кондиционеры (${sks.length} шт)</h4>
+                                ${sks.map(sk => `
+                                    <div style="background:white;padding:12px;margin-bottom:8px;border-radius:6px">
+                                        <div style="color:var(--accent);font-weight:700;margin-bottom:6px">СК #${sk.id}</div>
+                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+                                            ${sk.idSk ? `<div><strong>ID СК:</strong> ${sk.idSk}</div>` : ''}
+                                            ${sk.naimenovanie ? `<div><strong>Наименование:</strong> ${sk.naimenovanie}</div>` : ''}
+                                            ${sk.status ? `<div><strong>Статус:</strong> ${sk.status}</div>` : ''}
+                                            ${sk.tip ? `<div><strong>Тип по договору:</strong> ${sk.tip}</div>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    })()}
+                    
+                    <!-- Тип по договору - отображаем все СК -->
                     ${(inst.naimenovanie_sk1 || inst.naimenovanie_sk2 || inst.naimenovanie_sk3 || inst.naimenovanie_sk4 || inst.naimenovanie_sk5 || inst.naimenovanie_sk6) ? `
                         <div style="background:rgba(0,217,255,0.05);padding:8px;border-radius:6px;border-left:3px solid var(--accent);margin-top:8px;">
                             <strong>Марка/Модель СК:</strong>
