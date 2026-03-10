@@ -6345,8 +6345,20 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
         window.deleteComment = async function(commentId, taskId) {
           if (!confirm('Удалить комментарий?')) return;
           try {
-            const { error } = await supabase.rpc('delete_comment_with_file', {comment_id: commentId});
+            // Сначала получаем информацию о файле
+            const { data: comment } = await supabase.from('comments').select('file_url').eq('id', commentId).single();
+            
+            // Если есть файл, удаляем его из Storage
+            if (comment && comment.file_url) {
+              const fileName = comment.file_url.substring(comment.file_url.lastIndexOf('/') +1);
+              const { error: storageError } = await supabase.storage.from('comment-files').remove([fileName]);
+              if (storageError) console.error('Error deleting file:', storageError);
+            }
+            
+            // Удаляем комментарий из БД
+            const { error } = await supabase.from('comments').delete().eq('id', commentId);
             if (error) throw error;
+            
             loadAndRenderTaskComments(taskId);
             showToast('✅ Комментарий удален');
           } catch (error) {
