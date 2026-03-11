@@ -6282,7 +6282,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
               const isEdited = comment.is_edited || false;
               const formattedMessage = formatCommentText(comment.message);
               
-              html += `<div style="background:#f9f9f9;padding:12px;margin-bottom:10px;border-radius:6px">
+              html += `<div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:12px;margin-bottom:10px;border-radius:6px">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                   <div style="display:flex;align-items:center;gap:8px">
                     <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--success));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px">${(comment.users?.name || 'А')[0].toUpperCase()}</div>
@@ -6291,8 +6291,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                   </div>
                   <span style="font-size:11px;color:var(--text-muted)">${dateStr}</span>
                 </div>
-                <div style="color:#000;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
-                ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:white;border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
+                <div style="color:#fff;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
+                ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.1);border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
                 <div style="display:flex;gap:8px;margin-top:8px">
                   ${isOwnComment ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-muted);border:1px solid var(--text-muted)" onclick="editComment('${comment.id}', '${taskId}')">✏️ Редактировать</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:11px;background:#ef4444;border:none;color:white" onclick="deleteComment('${comment.id}', '${taskId}')">🗑 Удалить</button>` : ''}
                 </div>
@@ -6517,7 +6517,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
               const isEdited = comment.is_edited || false;
               const formattedMessage = formatCommentText(comment.message);
               
-              html += `<div style="background:#f9f9f9;padding:12px;margin-bottom:10px;border-radius:6px">
+              html += `<div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:12px;margin-bottom:10px;border-radius:6px">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                   <div style="display:flex;align-items:center;gap:8px">
                     <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--success));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px">${(comment.users?.name || 'А')[0].toUpperCase()}</div>
@@ -6526,8 +6526,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                   </div>
                   <span style="font-size:11px;color:var(--text-muted)">${dateStr}</span>
                 </div>
-                <div style="color:#000;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
-                ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:white;border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
+                <div style="color:#fff;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
+                ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.1);border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
                 <div style="display:flex;gap:8px;margin-top:8px">
                   ${isOwnComment ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-muted);border:1px solid var(--text-muted)" onclick="editInstallationComment('${comment.id}', '${instId}')">✏️ Редактировать</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:11px;background:#ef4444;border:none;color:white" onclick="deleteInstallationComment('${comment.id}', '${instId}')">🗑 Удалить</button>` : ''}
                 </div>
