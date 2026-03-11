@@ -3344,6 +3344,40 @@ const buttons = [
                     </div>
                 `;
             }
+            
+           // Блок с комментариями
+          html += `
+              <div class="card" style="margin-bottom: 16px;">
+                  <h3 class="section-title">💬 Комментарии</h3>
+                  
+                  <!-- Редактор комментариев -->
+                  <div style="margin-bottom:12px">
+                      <div style="display:flex;gap:8px;margin-bottom:8px">
+                          <button onclick="formatComment('bold')" title="Жирный" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer"><b>B</b></button>
+                          <button onclick="formatComment('italic')" title="Курсив" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer"><i>I</i></button>
+                          <button onclick="formatComment('code')" title="Код" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;font-family:monospace">&lt;/&gt;</button>
+                          <button onclick="toggleEmojiPicker()" title="Эмодзи" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer">😀</button>
+                          <button onclick="attachFile()" title="Прикрепить файл" style="padding:4px 8px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer">📎</button>
+                      </div>
+                      <div id="emojiPicker" style="display:none;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding:8px;background:#f9f9f9;border-radius:4px"></div>
+                      <input type="file" id="fileInputInst" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="handleFileSelect(event)"/>
+                      <div id="filePreviewInst"></div>
+                      <textarea id="commentInputInst" placeholder="Введите комментарий... И молимся что бы кто то ответил."
+                                style="width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit;resize:vertical" 
+                                onkeypress="if(event.keyCode===13 &amp;&amp; !event.shiftKey){event.preventDefault();sendInstallationComment('${inst.id}')}"></textarea>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                          <div style="font-size:11px;color:var(--text-muted)">Поддерживается: **жирный**, *курсив*, Молитвы, > </div>
+                          <button class="btn" onclick="sendInstallationComment('${inst.id}')">Отправить</button>
+                      </div>
+                  </div>
+                  
+                  <!-- Список комментариев -->
+                  <div id="installationCommentsList" style="max-height:500px;overflow-y:auto"></div>
+              </div>
+          `;
+          
+         // Загружаем и отображаем комментарии
+        loadAndRenderInstallationComments(inst.id);
 
             if (canEdit) {
                 html += `
@@ -6455,6 +6489,142 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
           }
         };
         window.removeSelectedFile = function() {selectedFile= null; document.getElementById('fileInput').value = ''; document.getElementById('filePreview').innerHTML = '';};
+        
+        // === ФУНКЦИИ ДЛЯ КОММЕНТАРИЕВ В МОНТАЖАХ ===
+        window.loadAndRenderInstallationComments = async function(instId) {
+          const commentsList = document.getElementById('installationCommentsList');
+          if (!commentsList) return;
+          
+          try {
+            const { data: comments, error } = await supabase
+              .from('comments')
+              .select(`*,users(name, email)`)
+              .eq('resource_id', instId)
+              .eq('resource_type', 'installation')
+              .order('created_at', { ascending: true });
+            
+            if (error) throw error;
+            
+            if (!comments || comments.length === 0) {
+              commentsList.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">Нет комментариев. Будьте первыми! 💬</p>';
+              return;
+            }
+            
+            let html = '';
+            comments.forEach(comment => {
+              const isOwnComment = String(comment.user_id) === String(currentUserProfile?.id);
+              const dateStr = new Date(comment.created_at).toLocaleString('ru-RU');
+              const isEdited = comment.is_edited || false;
+              const formattedMessage = formatCommentText(comment.message);
+              
+              html += `<div style="background:#f9f9f9;padding:12px;margin-bottom:10px;border-radius:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--success));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px">${(comment.users?.name || 'А')[0].toUpperCase()}</div>
+                    <strong style="color:var(--accent)">${comment.users?.name || 'Аноним'}</strong>
+                    ${isEdited ? '<span style="font-size:10px;color:var(--text-muted);font-style:normal">(изменено)</span>' : ''}
+                  </div>
+                  <span style="font-size:11px;color:var(--text-muted)">${dateStr}</span>
+                </div>
+                <div style="color:#000;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
+                ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:white;border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  ${isOwnComment ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-muted);border:1px solid var(--text-muted)" onclick="editInstallationComment('${comment.id}', '${instId}')">✏️ Редактировать</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:11px;background:#ef4444;border:none;color:white" onclick="deleteInstallationComment('${comment.id}', '${instId}')">🗑 Удалить</button>` : ''}
+                </div>
+              </div>`;
+            });
+            
+            commentsList.innerHTML = html;
+            commentsList.scrollTop = commentsList.scrollHeight;
+            
+          } catch (error) {
+            console.error('Error loading installation comments:', error);
+            commentsList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:20px;">Ошибка загрузки комментариев</p>';
+          }
+        };
+        
+        window.sendInstallationComment = async function(instId) {
+          const input = document.getElementById('commentInputInst');
+          const message = input?.value.trim();
+          const fileInput = document.getElementById('fileInputInst');
+          const file = fileInput?.files[0];
+          
+          if (!message && !file) {
+            showToast('⚠️ Введите текст или выберите файл');
+            return;
+          }
+          
+          try {
+            let file_url = null;
+            let file_name = null;
+            
+            if (file) {
+              const uploadResult = await uploadCommentFile(file, instId);
+              file_url = uploadResult.url;
+              file_name = uploadResult.name;
+            }
+            
+            const { data: comment, error } = await supabase
+              .from('comments')
+              .insert([{resource_id: instId, resource_type: 'installation', user_id: currentUserProfile?.id, message: message, file_url: file_url, file_name: file_name, is_edited: currentEditingCommentId ? true : false}])
+              .select()
+              .single();
+            
+            if (error) throw error;
+            
+            input.value = '';
+            if (fileInput) fileInput.value = '';
+            selectedFile= null;
+            currentEditingCommentId = null;
+            document.getElementById('filePreviewInst').innerHTML = '';
+            loadAndRenderInstallationComments(instId);
+            showToast('✅ Комментарий отправлен');
+            
+          } catch (error) {
+            console.error('Error sending installation comment:', error);
+            showToast('❌ Ошибка отправки комментария');
+          }
+        };
+        
+        window.editInstallationComment = async function(commentId, instId) {
+          try {
+            const { data: comment } = await supabase.from('comments').select('message').eq('id', commentId).single();
+            if (!comment) throw new Error('Комментарий не найден');
+            const input = document.getElementById('commentInputInst');
+            input.value = comment.message;
+            input.focus();
+            currentEditingCommentId = commentId;
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'replyCancelBtn';
+            cancelBtn.className = 'btn btn-outline';
+            cancelBtn.textContent = 'Отмена редактирования';
+            cancelBtn.onclick = () => {input.value = ''; currentEditingCommentId = null; cancelBtn.remove();};
+            input.parentNode.appendChild(cancelBtn);
+            showToast('✏️ Редактируйте комментарий и нажмите "Отправить"');
+          } catch (error) {
+            console.error('Error loading comment for edit:', error);
+            showToast('❌ Ошибка загрузки комментария');
+          }
+        };
+        
+        window.deleteInstallationComment = async function(commentId, instId) {
+          if (!confirm('Удалить комментарий?')) return;
+          try {
+            const { data: comment } = await supabase.from('comments').select('file_url').eq('id', commentId).single();
+            if (comment && comment.file_url) {
+              const fileName = comment.file_url.substring(comment.file_url.lastIndexOf('/') +1);
+              const { error: storageError } = await supabase.storage.from('comment-files').remove([fileName]);
+              if (storageError) console.error('Error deleting file:', storageError);
+            }
+            const { error } = await supabase.from('comments').delete().eq('id', commentId);
+            if (error) throw error;
+            loadAndRenderInstallationComments(instId);
+            showToast('✅ Комментарий удален');
+          } catch (error) {
+            console.error('Error deleting comment:', error);
+            showToast('❌ Ошибка удаления комментария');
+          }
+        };
         // Start the app
         initApp();
     </script>
