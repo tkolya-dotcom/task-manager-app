@@ -6257,7 +6257,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                   </div>
                   <span style="font-size:11px;color:var(--text-muted)">${dateStr}</span>
                 </div>
-                <div style="color:var(--text);line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
+                <div style="color:#000;line-height:1.6;margin-bottom:8px">${formattedMessage}</div>
                 ${comment.file_url ? `<div style="margin-top:8px;padding:8px;background:white;border-radius:4px">${comment.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${comment.file_url}" alt="${comment.file_name}" style="max-width:300px;border-radius:4px;cursor:pointer" onclick="window.open('${comment.file_url}', '_blank')"><div style="margin-top:4px"><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:12px">📎 Скачать ${comment.file_name}</a></div>` : `<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">📎</span><a href="${comment.file_url}" download="${comment.file_name}" style="color:var(--accent);text-decoration:none;font-size:13px">${comment.file_name}</a></div>`}</div>` : ''}
                 <div style="display:flex;gap:8px;margin-top:8px">
                   ${isOwnComment ? `<button class="btn btn-sm" style="padding:4px 8px;font-size:11px;background:transparent;color:var(--text-muted);border:1px solid var(--text-muted)" onclick="editComment('${comment.id}', '${taskId}')">✏️ Редактировать</button><button class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:11px;background:#ef4444;border:none;color:white" onclick="deleteComment('${comment.id}', '${taskId}')">🗑 Удалить</button>` : ''}
@@ -6324,7 +6324,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             
           } catch (error) {
             console.error('Error sending comment:', error);
-            showToast('❌ Ошибка отправки комментария');
+            showToast('❌ Ошибка отправки');
           }
         };
         
@@ -6363,7 +6363,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             showToast('✅ Комментарий удален');
           } catch (error) {
             console.error('Error deleting comment:', error);
-            showToast('❌ Ошибка удаления комментария');
+            showToast('❌ Ошибка удаления ');
           }
         };
         
@@ -6381,7 +6381,7 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             cancelBtn.textContent = 'Отмена редактирования';
             cancelBtn.onclick = () => {input.value = ''; currentEditingCommentId = null; cancelBtn.remove();};
             input.parentNode.appendChild(cancelBtn);
-            showToast('✏️ Редактируйте комментарий и нажмите "Отправить"');
+            showToast('✏️ Редактируйте комментарий "');
           } catch (error) {
             console.error('Error loading comment for edit:', error);
             showToast('❌ Ошибка загрузки комментария');
