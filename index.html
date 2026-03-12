@@ -4041,7 +4041,7 @@ const buttons = [
                 actionsHtml = `<div class="actions"><button class="btn btn-success" onclick="approvePRModal('${pr.id}')">Одобрить</button><button class="btn btn-danger" onclick="rejectPRModal('${pr.id}')">Отклонить</button></div>`;
             }
             
-            // Кнопки для изменения статуса после одобрения
+            // Кнопки для изменения статуса после одобрения (только для менеджеров)
             const canChangeStatus = isElevated && (pr.status === 'approved' || pr.status === 'in_order' || pr.status === 'ready_for_receipt');
             if (canChangeStatus) {
                 actionsHtml += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><h4 class="section-title">Изменить статус</h4>`;
@@ -4061,8 +4061,15 @@ const buttons = [
                 actionsHtml += `</div>`;
             }
             
-            // Show edit button only for the creator of the request
+            // Кнопка "Получено" для исполнителя, когда статус "Готов к получению"
             const isCreator = pr.created_by === currentUserProfile?.id;
+            if (isCreator && pr.status === 'ready_for_receipt') {
+                actionsHtml += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><h4 class="section-title">Подтвердить получение</h4>`;
+                actionsHtml += `<button class="btn btn-sm btn-success" style="margin:4px" onclick="showReceivedModal('${pr.id}', '${pr.received_at || ''}')">Получено</button>`;
+                actionsHtml += `</div>`;
+            }
+            
+            // Show edit button only for the creator of the request
             if (isCreator && (pr.status === 'pending' || pr.status === 'rejected' || pr.status === 'draft')) {
                 actionsHtml += `<button class="btn btn-warning" onclick="editPRModal('${pr.id}')">Редактировать и отправить на рассмотрение</button>`;
             }
