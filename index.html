@@ -5134,7 +5134,8 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
                        const planovaya_date = new Date(year, month, day);
                        
                      if (!isNaN(planovaya_date.getTime())) {
-                            installationData.planovaya_data_1_kv_2026 = Math.floor(planovaya_date.getTime() / 1000);
+                            // Pass ISO string for TIMESTAMPTZ compatibility
+                            installationData.planovaya_data_1_kv_2026 = planovaya_date.toISOString();
                         }
                     }
                 }
@@ -5362,12 +5363,15 @@ showModal('Заявка #' + prId.slice(0, 8), `<div style="margin-bottom:16px">
             
             while (document.getElementById('prItem' + i + 'Name')) {
                 const name = document.getElementById('prItem' + i + 'Name').value;
+                const materialSelect = document.getElementById('prItem' + i + 'Material');
+                const materialId = materialSelect ? materialSelect.value : null;
                 if (name) {
                     items.push({
                         name,
                         quantity: parseFloat(document.getElementById('prItem' + i + 'Qty').value) || 1,
                         unit: document.getElementById('prItem' + i + 'Unit').value,
-                        note: document.getElementById('prItem' + i + 'Note').value
+                        note: document.getElementById('prItem' + i + 'Note').value,
+                        material_id: materialId || null
                     });
                 }
                 i++;
