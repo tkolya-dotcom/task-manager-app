@@ -81,7 +81,7 @@ router.get('/archived', authenticateToken, async (req, res) => {
   }
 });
 
-// Search addresses from atss_q1_2026
+// Search addresses from atss_q1_2026 and kasip_azm_q1_2026
 router.get('/search-address', authenticateToken, async (req, res) => {
   try {
     const { q } = req.query;
@@ -91,7 +91,7 @@ router.get('/search-address', authenticateToken, async (req, res) => {
     }
 
     // Search in atss_q1_2026 table
-    const { data: addresses, error } = await supabase
+    const { data: atssAddresses, error: atssError } = await supabase
       .from('atss_q1_2026')
       .select(`
         id_ploshadki,
@@ -127,18 +127,61 @@ router.get('/search-address', authenticateToken, async (req, res) => {
       .ilike('adres_razmeshcheniya', `%${q}%`)
       .limit(20);
 
-    if (error) {
-      console.error('Search addresses error:', error);
-      return res.status(400).json({ error: error.message });
+    if (atssError) {
+      console.error('Search ATSS addresses error:', atssError);
     }
 
-    // Transform data for frontend
-    const transformedAddresses = (addresses || []).map(addr => ({
+    // Search in kasip_azm_q1_2026 table
+    const { data: kasipAddresses, error: kasipError } = await supabase
+      .from('kasip_azm_q1_2026')
+      .select(`
+        id_ploshadki,
+        servisnyy_id,
+        adres_raspolozheniya,
+        rayon,
+        id_konditsionera1,
+        naimenovanie_sk1,
+        status_sk1,
+        tip_sk_po_dogovoru1,
+        id_konditsionera2,
+        naimenovanie_sk2,
+        status_sk2,
+        tip_sk_po_dogovoru2,
+        id_konditsionera3,
+        naimenovanie_sk3,
+        status_sk3,
+        tip_sk_po_dogovoru3,
+        id_konditsionera4,
+        naimenovanie_sk4,
+        status_sk4,
+        tip_sk_po_dogovoru4,
+        id_konditsionera5,
+        naimenovanie_sk5,
+        status_sk5,
+        tip_sk_po_dogovoru5,
+        id_konditsionera6,
+        naimenovanie_sk6,
+        status_sk6,
+        tip_sk_po_dogovoru6,
+        plan_yanvar,
+        plan_fevral,
+        plan_mart
+      `)
+      .ilike('adres_raspolozheniya', `%${q}%`)
+      .limit(20);
+
+    if (kasipError) {
+      console.error('Search KASIP addresses error:', kasipError);
+    }
+
+    // Transform ATSS data for frontend
+    const transformedAtssAddresses = (atssAddresses || []).map(addr => ({
       id_ploshadki: addr.id_ploshadki,
       servisnyy_id: addr.servisnyy_id,
       adres_razmeshcheniya: addr.adres_razmeshcheniya,
       rayon: addr.rayon,
-      planovaya_data_1_kv_2026: addr.planovaya_data_1_kv_2026,
+      planovaya_data_1_kv_2026: addr.planovaya_data_1_kv_2026 ? String(addr.planovaya_data_1_kv_2026) : null,
+      source: 'atss',
       sk_count: [
         addr.id_sk1,
         addr.id_sk2,
@@ -157,7 +200,38 @@ router.get('/search-address', authenticateToken, async (req, res) => {
       ].filter(Boolean)
     }));
 
-    res.json({ addresses: transformedAddresses });
+    // Transform KASIP data for frontend (normalize field names)
+    const transformedKasipAddresses = (kasipAddresses || []).map(addr => ({
+      id_ploshadki: addr.id_ploshadki,
+      servisnyy_id: addr.servisnyy_id,
+      adres_razmeshcheniya: addr.adres_raspolozheniya,
+      rayon: addr.rayon,
+      planovaya_data_1_kv_2026: addr.plan_yanvar ? String(addr.plan_yanvar) : (addr.plan_fevral ? String(addr.plan_fevral) : (addr.plan_mart ? String(addr.plan_mart) : null)),
+      source: 'kasip_azm',
+      sk_count: [
+        addr.id_konditsionera1,
+        addr.id_konditsionera2,
+        addr.id_konditsionera3,
+        addr.id_konditsionera4,
+        addr.id_konditsionera5,
+        addr.id_konditsionera6
+      ].filter(Boolean).length,
+      sk: [
+        addr.id_konditsionera1 ? { id_sk: addr.id_konditsionera1, naimenovanie_sk: addr.naimenovanie_sk1, status_oborudovaniya: addr.status_sk1, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru1 } : null,
+        addr.id_konditsionera2 ? { id_sk: addr.id_konditsionera2, naimenovanie_sk: addr.naimenovanie_sk2, status_oborudovaniya: addr.status_sk2, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru2 } : null,
+        addr.id_konditsionera3 ? { id_sk: addr.id_konditsionera3, naimenovanie_sk: addr.naimenovanie_sk3, status_oborudovaniya: addr.status_sk3, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru3 } : null,
+        addr.id_konditsionera4 ? { id_sk: addr.id_konditsionera4, naimenovanie_sk: addr.naimenovanie_sk4, status_oborudovaniya: addr.status_sk4, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru4 } : null,
+        addr.id_konditsionera5 ? { id_sk: addr.id_konditsionera5, naimenovanie_sk: addr.naimenovanie_sk5, status_oborudovaniya: addr.status_sk5, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru5 } : null,
+        addr.id_konditsionera6 ? { id_sk: addr.id_konditsionera6, naimenovanie_sk: addr.naimenovanie_sk6, status_oborudovaniya: addr.status_sk6, tip_sk_po_dogovoru: addr.tip_sk_po_dogovoru6 } : null
+      ].filter(Boolean)
+    }));
+
+    // Combine and sort results
+    const allAddresses = [...transformedAtssAddresses, ...transformedKasipAddresses]
+      .sort((a, b) => (a.adres_razmeshcheniya || '').localeCompare(b.adres_razmeshcheniya || ''))
+      .slice(0, 20);
+
+    res.json({ addresses: allAddresses });
   } catch (error) {
     console.error('Search addresses error:', error);
     res.status(500).json({ error: 'Internal server error' });
